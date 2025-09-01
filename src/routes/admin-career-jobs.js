@@ -11,24 +11,105 @@ const router = express.Router();
 router.use(protect);
 router.use(authorize('ADMIN'));
 
-// Get all jobs
-router.get('/', asyncHandler(async (req, res) => {
-  try {
-    const jobs = await prisma.Job.findMany({
-      where: { isActive: true }, // Only return active jobs
-      include: {
-        _count: {
-          select: {
-            applications: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
+// Get all jobs with advanced filtering
+router.get('/', [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+  query('search').optional().isString().withMessage('Search must be a string'),
+  query('type').optional().isString().withMessage('Job type must be a string'),
+  query('department').optional().isString().withMessage('Department must be a string'),
+  query('location').optional().isString().withMessage('Location must be a string'),
+  query('status').optional().isIn(['active', 'archived', 'all']).withMessage('Status must be active, archived, or all'),
+  query('sortBy').optional().isIn(['createdAt', 'title', 'applications', 'postedDate']).withMessage('Invalid sort field'),
+  query('sortOrder').optional().isIn(['asc', 'desc']).withMessage('Sort order must be asc or desc'),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      details: errors.array()
     });
+  }
+
+  try {
+    const { 
+      page = 1, 
+      limit = 20, 
+      search, 
+      type, 
+      department, 
+      location, 
+      status = 'active',
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Build where clause
+    const where = {};
+    
+    // Status filtering
+    if (status === 'active') {
+      where.isActive = true;
+    } else if (status === 'archived') {
+      where.isActive = false;
+    }
+    // 'all' includes both active and archived
+
+    // Search filtering
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { requirements: { contains: search, mode: 'insensitive' } },
+        { department: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    // Specific filters
+    if (type) where.type = type;
+    if (department) where.department = { contains: department, mode: 'insensitive' };
+    if (location) where.location = { contains: location, mode: 'insensitive' };
+
+    // Build orderBy
+    const orderBy = {};
+    if (sortBy === 'applications') {
+      orderBy.applications = { _count: sortOrder };
+    } else {
+      orderBy[sortBy] = sortOrder;
+    }
+
+    // Get jobs with pagination
+    const [jobs, total] = await Promise.all([
+      prisma.Job.findMany({
+        where,
+        include: {
+          _count: {
+            select: {
+              applications: true
+            }
+          }
+        },
+        skip,
+        take: parseInt(limit),
+        orderBy
+      }),
+      prisma.Job.count({ where })
+    ]);
+
+    const totalPages = Math.ceil(total / parseInt(limit));
 
     res.status(200).json({
       success: true,
-      data: jobs
+      data: jobs,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages
+      }
     });
   } catch (error) {
     logger.error('Jobs fetch error:', error);
@@ -177,7 +258,7 @@ router.put('/', [
   }
 }));
 
-// Delete job
+// Archive job (soft delete)
 router.delete('/', [
   query('id').isString().withMessage('Job ID is required'),
 ], asyncHandler(async (req, res) => {
@@ -211,29 +292,119 @@ router.delete('/', [
       });
     }
 
-    // Check if job has applications
-    if (job._count.applications > 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Cannot delete job with existing applications'
-      });
-    }
-
-          await prisma.Job.delete({
-      where: { id }
+    // Archive the job instead of deleting
+    const archivedJob = await prisma.Job.update({
+      where: { id },
+      data: {
+        isActive: false,
+        archivedAt: new Date(),
+        archivedBy: req.user.id
+      }
     });
 
-    logger.info(`Job deleted: ${job.title} by admin: ${req.user.email}`);
+    logger.info(`Job archived: ${job.title} by admin: ${req.user.email}`);
 
     res.status(200).json({
       success: true,
-      message: 'Job deleted successfully'
+      message: 'Job archived successfully',
+      data: archivedJob
     });
   } catch (error) {
-    logger.error('Job deletion error:', error);
+    logger.error('Job archival error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to delete job'
+      error: 'Failed to archive job'
+    });
+  }
+}));
+
+// Get career analytics
+router.get('/analytics', asyncHandler(async (req, res) => {
+  try {
+    const [
+      totalJobs,
+      activeJobs,
+      archivedJobs,
+      totalApplications,
+      applicationsByStatus,
+      jobsByDepartment,
+      jobsByType,
+      recentActivity
+    ] = await Promise.all([
+      // Total counts
+      prisma.Job.count(),
+      prisma.Job.count({ where: { isActive: true } }),
+      prisma.Job.count({ where: { isActive: false } }),
+      prisma.CareerApplication.count(),
+      
+      // Applications by status
+      prisma.CareerApplication.groupBy({
+        by: ['status'],
+        _count: { status: true }
+      }),
+      
+      // Jobs by department
+      prisma.Job.groupBy({
+        by: ['department'],
+        where: { isActive: true },
+        _count: { department: true }
+      }),
+      
+      // Jobs by type
+      prisma.Job.groupBy({
+        by: ['type'],
+        where: { isActive: true },
+        _count: { type: true }
+      }),
+      
+      // Recent activity
+      prisma.CareerApplication.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          job: {
+            select: { title: true }
+          }
+        }
+      })
+    ]);
+
+    // Calculate conversion rates
+    const conversionRates = {
+      total: totalApplications,
+      pending: applicationsByStatus.find(s => s.status === 'PENDING')?._count.status || 0,
+      reviewing: applicationsByStatus.find(s => s.status === 'REVIEWING')?._count.status || 0,
+      approved: applicationsByStatus.find(s => s.status === 'APPROVED')?._count.status || 0,
+      rejected: applicationsByStatus.find(s => s.status === 'REJECTED')?._count.status || 0,
+      hired: applicationsByStatus.find(s => s.status === 'HIRED')?._count.status || 0
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        overview: {
+          totalJobs,
+          activeJobs,
+          archivedJobs,
+          totalApplications
+        },
+        conversionRates,
+        jobsByDepartment: jobsByDepartment.map(d => ({
+          department: d.department || 'Unspecified',
+          count: d._count.department
+        })),
+        jobsByType: jobsByType.map(t => ({
+          type: t.type,
+          count: t._count.type
+        })),
+        recentActivity
+      }
+    });
+  } catch (error) {
+    logger.error('Career analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch career analytics'
     });
   }
 }));

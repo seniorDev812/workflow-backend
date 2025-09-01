@@ -11,10 +11,17 @@ const router = express.Router();
 router.use(protect); 
 router.use(authorize('ADMIN'));
 
-// Get products with filtering
+// Get products with advanced filtering and pagination
 router.get('/', [
   query('categoryId').optional().isString().withMessage('Category ID must be a string'),
   query('search').optional().isString().withMessage('Search must be a string'),
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+  query('status').optional().isIn(['active', 'archived', 'all']).withMessage('Status must be active, archived, or all'),
+  query('priceMin').optional().isFloat({ min: 0 }).withMessage('Minimum price must be a positive number'),
+  query('priceMax').optional().isFloat({ min: 0 }).withMessage('Maximum price must be a positive number'),
+  query('sortBy').optional().isIn(['name', 'price', 'createdAt', 'updatedAt']).withMessage('Invalid sort field'),
+  query('sortOrder').optional().isIn(['asc', 'desc']).withMessage('Sort order must be asc or desc'),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -25,37 +32,83 @@ router.get('/', [
     });
   }
 
-  const { categoryId, search } = req.query;
+  const { 
+    categoryId, 
+    search, 
+    page = 1, 
+    limit = 20, 
+    status = 'active',
+    priceMin,
+    priceMax,
+    sortBy = 'createdAt',
+    sortOrder = 'desc'
+  } = req.query;
 
   try {
-    const where = {
-      isActive: true, // Only return active products
-      ...(categoryId && { categoryId }),
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } }
-        ]
-      })
-    };
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const products = await prisma.Product.findMany({
-      where,
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            slug: true
+    // Build where clause
+    const where = {};
+    
+    // Status filtering
+    if (status === 'active') {
+      where.isActive = true;
+    } else if (status === 'archived') {
+      where.isActive = false;
+    }
+    // 'all' includes both active and archived
+
+    // Category filtering
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    // Search filtering
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    // Price range filtering
+    if (priceMin || priceMax) {
+      where.price = {};
+      if (priceMin) where.price.gte = parseFloat(priceMin);
+      if (priceMax) where.price.lte = parseFloat(priceMax);
+    }
+
+    // Get products with pagination
+    const [products, total] = await Promise.all([
+      prisma.Product.findMany({
+        where,
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true
+            }
           }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+        },
+        skip,
+        take: parseInt(limit),
+        orderBy: { [sortBy]: sortOrder }
+      }),
+      prisma.Product.count({ where })
+    ]);
+
+    const totalPages = Math.ceil(total / parseInt(limit));
 
     res.status(200).json({
       success: true,
-      data: products
+      data: products,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages
+      }
     });
   } catch (error) {
     logger.error('Products fetch error:', error);
@@ -225,7 +278,7 @@ router.put('/', [
   }
 }));
 
-// Delete product
+// Archive product (soft delete)
 router.delete('/', [
   query('id').isString().withMessage('Product ID is required'),
 ], asyncHandler(async (req, res) => {
@@ -252,23 +305,123 @@ router.delete('/', [
       });
     }
 
-    // Hard delete - completely remove from database
-
-    await prisma.Product.delete({
-      where: { id }
+    // Soft delete - archive the product instead of removing
+    const archivedProduct = await prisma.Product.update({
+      where: { id },
+      data: {
+        isActive: false,
+        archivedAt: new Date(),
+        archivedBy: req.user.id
+      }
     });
 
-    logger.info(`Product deleted: ${product.name} by admin: ${req.user.email}`);
+    logger.info(`Product archived: ${product.name} by admin: ${req.user.email}`);
 
     res.status(200).json({
       success: true,
-      message: 'Product deleted successfully'
+      message: 'Product archived successfully',
+      data: archivedProduct
     });
   } catch (error) {
-    logger.error('Product deletion error:', error);
+    logger.error('Product archival error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to delete product'
+      error: 'Failed to archive product'
+    });
+  }
+}));
+
+// Get product analytics
+router.get('/analytics', asyncHandler(async (req, res) => {
+  try {
+    const [
+      totalProducts,
+      activeProducts,
+      archivedProducts,
+      productsByCategory,
+      priceRanges,
+      recentActivity
+    ] = await Promise.all([
+      // Total counts
+      prisma.Product.count(),
+      prisma.Product.count({ where: { isActive: true } }),
+      prisma.Product.count({ where: { isActive: false } }),
+      
+      // Products by category
+      prisma.Product.groupBy({
+        by: ['categoryId'],
+        where: { isActive: true },
+        _count: { categoryId: true }
+      }),
+      
+      // Price range distribution
+      prisma.Product.groupBy({
+        by: ['price'],
+        where: { isActive: true },
+        _count: { price: true }
+      }),
+      
+      // Recent activity
+      prisma.Product.findMany({
+        take: 10,
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          category: {
+            select: { name: true }
+          }
+        }
+      })
+    ]);
+
+    // Get category names for products by category
+    const categoryIds = productsByCategory.map(p => p.categoryId);
+    const categories = await prisma.Category.findMany({
+      where: { id: { in: categoryIds } },
+      select: { id: true, name: true }
+    });
+
+    const productsByCategoryWithNames = productsByCategory.map(p => ({
+      categoryId: p.categoryId,
+      count: p._count.categoryId,
+      categoryName: categories.find(c => c.id === p.categoryId)?.name || 'Unknown'
+    }));
+
+    // Calculate price ranges
+    const priceRangeStats = {
+      under10: 0,
+      under50: 0,
+      under100: 0,
+      under500: 0,
+      over500: 0
+    };
+
+    priceRanges.forEach(p => {
+      const price = parseFloat(p.price);
+      if (price < 10) priceRangeStats.under10++;
+      else if (price < 50) priceRangeStats.under50++;
+      else if (price < 100) priceRangeStats.under100++;
+      else if (price < 500) priceRangeStats.under500++;
+      else priceRangeStats.over500++;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        overview: {
+          totalProducts,
+          activeProducts,
+          archivedProducts
+        },
+        productsByCategory: productsByCategoryWithNames,
+        priceRanges: priceRangeStats,
+        recentActivity
+      }
+    });
+  } catch (error) {
+    logger.error('Product analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch product analytics'
     });
   }
 }));
