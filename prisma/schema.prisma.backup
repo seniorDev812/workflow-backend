@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model career_applications {
+  id          String   @id
+  jobId       String
+  name        String
+  email       String
+  phone       String?
+  resumeUrl   String?
+  coverLetter String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  userId      String?
+  jobs        jobs     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  users       users?   @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([email])
+  @@index([jobId])
+  @@index([status])
+}
+
+model categories {
+  id          String     @id
+  name        String     @unique
+  description String?
+  slug        String     @unique
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  products    products[]
+}
+
+model contact_submissions {
+  id             String   @id
+  firstName      String
+  lastName       String
+  company        String
+  country        String
+  phone          String
+  email          String
+  requirements   Json
+  productContext Json?
+  status         String   @default("NEW")
+  read           Boolean  @default(false)
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime
+  userId         String?
+  users          users?   @relation(fields: [userId], references: [id])
+
+  @@index([country])
+  @@index([createdAt])
+  @@index([email])
+  @@index([read])
+  @@index([status])
+}
+
+model jobs {
+  id                  String                @id
+  title               String
+  description         String
+  requirements        String?
+  location            String?
+  type                String                @default("FULL_TIME")
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  benefits            String[]
+  department          String?
+  postedDate          DateTime?
+  responsibilities    String?
+  salary              String?
+  skills              String[]
+  career_applications career_applications[]
+
+  @@index([createdAt])
+  @@index([isActive])
+  @@index([location])
+  @@index([type])
+}
+
+model messages {
+  id        String   @id
+  name      String
+  email     String
+  subject   String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  userId    String?
+  users     users?   @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([email])
+  @@index([read])
+}
+
+model page_views {
+  id        String   @id
+  path      String
+  ip        String?
+  userAgent String?
+  sessionId String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([path])
+}
+
+model products {
+  id          String     @id
+  name        String
+  description String?
+  price       Decimal?
+  imageUrl    String?
+  categoryId  String
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  categories  categories @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+}
+
+model settings {
+  id    String @id
+  key   String @unique
+  value String
+  type  String @default("string")
+}
+
+model users {
+  id                  String                @id
+  email               String                @unique
+  password            String
+  name                String
+  role                String                @default("USER")
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  backupCodes         String[]              @default([])
+  lastLoginAt         DateTime?
+  lockedUntil         DateTime?
+  loginAttempts       Int                   @default(0)
+  resetToken          String?
+  resetTokenExpiry    DateTime?
+  twoFactorEnabled    Boolean               @default(false)
+  twoFactorSecret     String?
+  career_applications career_applications[]
+  contact_submissions contact_submissions[]
+  messages            messages[]
+
+  @@index([createdAt])
+  @@index([email])
+  @@index([isActive])
+}

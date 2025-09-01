@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  password           String
+  name               String
+  role               String              @default("USER")
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  backupCodes        String[]            @default([])
+  lastLoginAt        DateTime?
+  lockedUntil        DateTime?
+  loginAttempts      Int                 @default(0)
+  resetToken         String?
+  resetTokenExpiry   DateTime?
+  twoFactorEnabled   Boolean             @default(false)
+  twoFactorSecret    String?
+  applications       CareerApplication[]
+  contactSubmissions ContactSubmission[]
+  messages           Message[]
+
+  @@index([email])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  slug        String    @unique
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal?
+  imageUrl    String?
+  categoryId  String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("products")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([read])
+  @@index([createdAt])
+  @@index([email])
+  @@map("messages")
+}
+
+model Job {
+  id               String              @id @default(cuid())
+  title            String
+  description      String
+  requirements     String?
+  location         String?
+  type             String              @default("FULL_TIME")
+  isActive         Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  benefits         String[]
+  department       String?
+  postedDate       DateTime?
+  responsibilities String?
+  salary           String?
+  skills           String[]
+  applications     CareerApplication[]
+
+  @@index([isActive])
+  @@index([type])
+  @@index([createdAt])
+  @@index([location])
+  @@map("jobs")
+}
+
+model CareerApplication {
+  id          String   @id @default(cuid())
+  jobId       String
+  name        String
+  email       String
+  phone       String?
+  resumeUrl   String?
+  coverLetter String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String?
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([email])
+  @@index([jobId])
+  @@map("career_applications")
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  type  String @default("string")
+
+  @@map("settings")
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  path      String
+  ip        String?
+  userAgent String?
+  sessionId String?
+  createdAt DateTime @default(now())
+
+  @@index([path])
+  @@index([createdAt])
+  @@map("page_views")
+}
+
+model ContactSubmission {
+  id             String   @id @default(cuid())
+  firstName      String
+  lastName       String
+  company        String
+  country        String
+  phone          String
+  email          String
+  requirements   Json
+  productContext Json?
+  status         String   @default("NEW")
+  read           Boolean  @default(false)
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id])
+
+  @@index([status])
+  @@index([read])
+  @@index([createdAt])
+  @@index([email])
+  @@index([country])
+  @@map("contact_submissions")
+}
