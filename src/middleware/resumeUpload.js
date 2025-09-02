@@ -1,5 +1,6 @@
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -9,7 +10,15 @@ const __dirname = dirname(__filename);
 // Configure storage for resumes
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads/resumes/'));
+    const dest = path.join(__dirname, '../../uploads/resumes/');
+    try {
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true });
+      }
+    } catch (err) {
+      return cb(err);
+    }
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
     // Generate unique filename with timestamp
