@@ -310,8 +310,6 @@ router.delete('/', [
       where: { id },
       data: {
         isActive: false,
-        archivedAt: new Date(),
-        archivedBy: req.user.id
       }
     });
 
