@@ -232,34 +232,15 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
     // Use more efficient queries with optimized selects
     const [
       totalProducts,
-      totalMessages,
-      unreadMessages,
       totalJobs,
       totalApplications,
       pendingApplications
     ] = await Promise.all([
       prisma.Product.count({ where: { isActive: true } }),
-      prisma.Message.count(),
-      prisma.Message.count({ where: { read: false } }),
       prisma.Job.count({ where: { isActive: true } }),
       prisma.CareerApplication.count(),
       prisma.CareerApplication.count({ where: { status: 'PENDING' } })
     ]);
-
-    // Get recent messages with optimized query
-    const recentMessages = await prisma.Message.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        subject: true,
-        message: true,
-        createdAt: true,
-        read: true
-      }
-    });
 
     // Get recent applications with optimized query
     const recentApplications = await prisma.CareerApplication.findMany({
@@ -299,14 +280,6 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
     const activityFeed = [
       {
         id: '1',
-        type: 'message',
-        title: 'New message received',
-        description: `Message from ${recentMessages[0]?.name || 'Unknown'}`,
-        timestamp: new Date().toISOString(),
-        user: recentMessages[0]?.name
-      },
-      {
-        id: '2',
         type: 'application',
         title: 'New job application',
         description: `Application for ${recentApplications[0]?.job?.title || 'General Position'}`,
@@ -314,7 +287,7 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
         user: recentApplications[0]?.name
       },
       {
-        id: '3',
+        id: '2',
         type: 'product',
         title: 'Product updated',
         description: 'Product information has been modified',
@@ -322,7 +295,7 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
         user: 'Admin'
       },
       {
-        id: '4',
+        id: '3',
         type: 'system',
         title: 'System backup completed',
         description: 'Daily backup completed successfully',
@@ -333,8 +306,6 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
 
     const stats = {
       totalProducts,
-      totalMessages,
-      unreadMessages,
       totalJobs,
       totalApplications,
       pendingApplications,
@@ -344,7 +315,6 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
       systemHealth,
       performanceMetrics,
       activityFeed,
-      recentMessages,
       recentApplications
     };
 
@@ -361,58 +331,6 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch dashboard statistics'
-    });
-  }
-}));
-
-// @desc    Get recent activity
-// @route   GET /api/admin/dashboard/recent-activity
-// @access  Private (Admin only)
-router.get('/dashboard/recent-activity', asyncHandler(async (req, res) => {
-  try {
-    const [recentMessages, recentApplications] = await Promise.all([
-      prisma.Message.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          subject: true,
-          read: true,
-          createdAt: true
-        }
-      }),
-      prisma.CareerApplication.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          status: true,
-          createdAt: true,
-          job: {
-            select: {
-              title: true
-            }
-          }
-        }
-      })
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        recentMessages,
-        recentApplications
-      }
-    });
-  } catch (error) {
-    logger.error('Recent activity error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch recent activity'
     });
   }
 }));
