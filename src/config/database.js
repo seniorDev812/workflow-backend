@@ -2,30 +2,30 @@ import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
 
 const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'], // Reduced logging for performance
+  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   datasources: {
     db: {
       url: process.env.DATABASE_URL,
     },
   },
-  // Optimized connection pooling for cloud databases
+  // Optimized for Aiven PostgreSQL
   __internal: {
     engine: {
-      connectionLimit: 50, // Increased for cloud
+      connectionLimit: 20, // Optimized for Aiven's connection limits
       pool: {
-        min: 5, // Increased minimum connections
-        max: 20, // Increased maximum connections
-        acquireTimeoutMillis: 10000, // Reduced timeout for faster failure detection
-        createTimeoutMillis: 10000, // Faster connection creation
-        destroyTimeoutMillis: 2000, // Faster cleanup
-        idleTimeoutMillis: 60000, // Keep connections alive longer
-        reapIntervalMillis: 500, // More frequent cleanup
-        createRetryIntervalMillis: 50, // Faster retry
+        min: 2, // Minimum connections for Aiven
+        max: 10, // Maximum connections (Aiven free tier usually allows 10-20)
+        acquireTimeoutMillis: 5000, // Faster timeout for Aiven
+        createTimeoutMillis: 5000, // Faster connection creation
+        destroyTimeoutMillis: 1000, // Faster cleanup
+        idleTimeoutMillis: 30000, // Shorter idle time for Aiven
+        reapIntervalMillis: 1000, // Less frequent cleanup
+        createRetryIntervalMillis: 100, // Retry interval
       },
     },
   },
   // Query optimization
-  errorFormat: 'minimal', // Reduced error details for performance
+  errorFormat: 'minimal',
 });
 
 // Create default admin function

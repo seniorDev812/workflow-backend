@@ -20,18 +20,25 @@
    - `src/server.js` ✅
    - `prisma/schema.prisma` ✅
 
-## Step 2: Create Database on Render.com
+## Step 2: Configure Aiven PostgreSQL Database
 
-1. **Go to Render.com Dashboard**
-2. **Click "New +" → "PostgreSQL"**
-3. **Configure:**
-   - **Name**: `seengroup-database`
-   - **Database**: `seengroup_prod`
-   - **User**: `seengroup_user`
-   - **Region**: Choose closest to your users
-   - **Plan**: Starter (free tier available)
+1. **Go to [console.aiven.io](https://console.aiven.io)**
+2. **Sign in to your account**
+3. **Select your PostgreSQL service** (or create one if you haven't)
+4. **Go to "Overview" tab**
+5. **Click "Copy" next to the connection string**
 
-4. **Copy the connection string** - you'll need this for the next step
+**Aiven Connection String Format:**
+```
+postgresql://username:password@host:port/database_name?sslmode=require
+```
+
+**Important Aiven Notes:**
+- **SSL Mode**: Required (`sslmode=require`)
+- **Connection Pooling**: Managed at service level
+- **Backups**: Automatic daily backups included
+- **Monitoring**: Built-in performance monitoring
+- **Free Tier**: Usually allows 10-20 concurrent connections
 
 ## Step 3: Deploy Your Backend
 
@@ -48,16 +55,18 @@
    - **Build Command**: `npm install && npx prisma generate`
    - **Start Command**: `npm run start`
 
-   **Environment Variables:**
-   ```
-   NODE_ENV=production
-   PORT=10000
-   DATABASE_URL=<your-postgresql-connection-string>
-   JWT_SECRET=<generate-a-strong-random-string>
-   ADMIN_EMAIL=admin@yourdomain.com
-   ADMIN_PASSWORD=<secure-admin-password>
-   CORS_ORIGIN=https://yourdomain.com,https://www.yourdomain.com
-   ```
+       **Environment Variables:**
+    ```
+    NODE_ENV=production
+    PORT=10000
+    DATABASE_URL=<your-aiven-postgresql-connection-string>
+    JWT_SECRET=<generate-a-strong-random-string>
+    ADMIN_EMAIL=admin@yourdomain.com
+    ADMIN_PASSWORD=<secure-admin-password>
+    CORS_ORIGIN=https://yourdomain.com,https://www.yourdomain.com
+    ```
+
+    **Important**: Make sure your Aiven connection string includes `?sslmode=require`
 
 5. **Click "Create Web Service"**
 
