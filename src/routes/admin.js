@@ -102,39 +102,53 @@ async function getRealSystemHealth() {
 // Real performance metrics function
 async function getRealPerformanceMetrics() {
   try {
-    // Get real API response times from recent requests
-    const recentRequests = await prisma.$queryRaw`
-      SELECT 
-        AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) * 1000 as avg_response_time
-      FROM (
-        SELECT created_at, updated_at 
-        FROM messages 
-        WHERE created_at >= NOW() - INTERVAL '1 hour'
-        LIMIT 100
-      ) recent_data
-    `.catch(() => [{ avg_response_time: 0 }]);
+    // Use Prisma models and compute metrics in JS to avoid SQL schema mismatches
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
-    const avgResponseTime = Math.round(recentRequests[0]?.avg_response_time || 0);
+    // Fetch recent messages and compute avg response time based on createdAt/updatedAt
+    const recentMessages = await prisma.Message.findMany({
+      where: { createdAt: { gte: oneHourAgo } },
+      select: { createdAt: true, updatedAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    }).catch(() => []);
 
-    // Calculate real uptime (simplified - in production use proper uptime tracking)
+    let avgResponseTime = 0;
+    if (recentMessages.length > 0) {
+      const diffs = recentMessages
+        .map((m) => {
+          const created = m.createdAt ? new Date(m.createdAt).getTime() : 0;
+          const updated = m.updatedAt ? new Date(m.updatedAt).getTime() : created;
+          return Math.max(0, updated - created);
+        })
+        .filter((ms) => Number.isFinite(ms));
+      if (diffs.length > 0) {
+        avgResponseTime = Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length);
+      }
+    }
+
+    // Calculate uptime (simplified)
     const uptime = process.uptime();
     const uptimePercentage = Math.min(99.9, Math.max(90, 100 - (uptime / 86400) * 0.1));
 
-    // Calculate real error rate from recent logs
-    const errorRate = Math.random() * 0.1; // In production, calculate from actual error logs
+    // Placeholder error rate (replace with real log-derived metric if available)
+    const errorRate = Math.random() * 0.1;
 
-    // Get real active users (sessions in last 15 minutes)
-    const activeUsers = await prisma.$queryRaw`
-      SELECT COUNT(DISTINCT ip) as active_users
-      FROM page_views 
-      WHERE created_at >= NOW() - INTERVAL '15 minutes'
-    `.catch(() => [{ active_users: 0 }]);
+    // Active users: count distinct IPs from PageView in last 15 minutes
+    const uniqueActiveIps = await prisma.PageView.groupBy({
+      by: ['ip'],
+      where: { createdAt: { gte: fifteenMinutesAgo } },
+      _count: { ip: true },
+    })
+      .then((rows) => rows.length)
+      .catch(() => 0);
 
     return {
       avgResponseTime: Math.max(50, Math.min(1000, avgResponseTime)),
       uptime: Math.round(uptimePercentage * 10) / 10,
       errorRate: Math.round(errorRate * 1000) / 1000,
-      activeUsers: activeUsers[0]?.active_users || 0
+      activeUsers: uniqueActiveIps,
     };
   } catch (error) {
     logger.error('Performance metrics calculation failed:', error);
@@ -142,7 +156,7 @@ async function getRealPerformanceMetrics() {
       avgResponseTime: 100,
       uptime: 99.5,
       errorRate: 0.001,
-      activeUsers: 0
+      activeUsers: 0,
     };
   }
 }
