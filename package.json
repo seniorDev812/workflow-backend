@@ -15,7 +15,9 @@
     "studio": "prisma studio",
     "migrate-to-cloud": "node scripts/migrate-to-cloud.js",
     "db:ping": "prisma db pull",
-    "db:seed": "node prisma/database.js"
+    "db:seed": "node prisma/database.js",
+    "build": "prisma generate",
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "nodejs",
