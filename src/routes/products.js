@@ -40,7 +40,7 @@ router.get('/', [
     };
 
     // Get products with pagination
-    const [products, total] = await Promise.all([
+    const [productsRaw, total] = await Promise.all([
       prisma.products.findMany({
         where,
         include: {
@@ -65,6 +65,15 @@ router.get('/', [
       }),
       prisma.products.count({ where })
     ]);
+
+    // Transform products to match frontend expectations
+    const products = productsRaw.map(product => ({
+      ...product,
+      category: product.categories,
+      subcategory: product.subcategories,
+      categories: undefined,
+      subcategories: undefined
+    }));
 
     const totalPages = Math.ceil(total / parseInt(limit));
 
@@ -325,10 +334,17 @@ router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const product = await prisma.products.findUnique({
+    const productRaw = await prisma.products.findUnique({
       where: { id },
       include: {
         categories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        },
+        subcategories: {
           select: {
             id: true,
             name: true,
@@ -338,12 +354,21 @@ router.get('/:id', asyncHandler(async (req, res) => {
       }
     });
 
-    if (!product) {
+    if (!productRaw) {
       return res.status(404).json({
         success: false,
         error: 'Product not found'
       });
     }
+
+    // Transform product to match frontend expectations
+    const product = {
+      ...productRaw,
+      category: productRaw.categories,
+      subcategory: productRaw.subcategories,
+      categories: undefined,
+      subcategories: undefined
+    };
 
     res.status(200).json({
       success: true,

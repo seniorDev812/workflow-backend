@@ -187,7 +187,7 @@ app.get('/api/test-rate-limit', (req, res) => {
 // API routes - More specific routes first
 app.use('/api/auth', authRoutes);
 app.use('/api/admin/categories', adminLimiter, adminCategoriesRoutes);
-app.use('/api/admin/categories', adminLimiter, adminSubcategoriesRoutes);
+app.use('/api/admin/subcategories', adminLimiter, adminSubcategoriesRoutes);
 app.use('/api/admin/products', adminLimiter, adminProductsRoutes);
 app.use('/api/admin/career/jobs', adminLimiter, adminCareerJobsRoutes);
 app.use('/api/admin/settings', adminLimiter, adminSettingsRoutes);
