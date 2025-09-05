@@ -79,7 +79,7 @@ router.get('/jobs', [
         include: {
           _count: {
             select: {
-              applications: true
+              career_applications: true
             }
           }
         },
@@ -218,7 +218,7 @@ router.post('/apply', [
         resumeUrl
       },
       include: {
-        job: {
+        jobs: {
           select: {
             title: true
           }
@@ -545,7 +545,7 @@ router.get('/applications', [
           updatedAt: true,
           resumeUrl: true,
           coverLetter: true,
-          job: {
+          jobs: {
             select: {
               id: true,
               title: true,
@@ -592,7 +592,7 @@ router.get('/applications/:id', asyncHandler(async (req, res) => {
     const application = await prisma.career_applications.findUnique({
       where: { id },
       include: {
-        job: {
+        jobs: {
           select: {
             id: true,
             title: true,
@@ -645,7 +645,7 @@ router.patch('/applications/:id/status', [
     const application = await prisma.career_applications.findUnique({
       where: { id },
       include: {
-        job: {
+        jobs: {
           select: {
             title: true
           }
@@ -664,7 +664,7 @@ router.patch('/applications/:id/status', [
       where: { id },
       data: { status },
       include: {
-        job: {
+        jobs: {
           select: {
             title: true
           }
