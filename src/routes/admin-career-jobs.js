@@ -83,7 +83,7 @@ router.get('/', [
 
     // Get jobs with pagination
     const [jobs, total] = await Promise.all([
-      prisma.Job.findMany({
+      prisma.jobs.findMany({
         where,
         include: {
           _count: {
@@ -96,7 +96,7 @@ router.get('/', [
         take: parseInt(limit),
         orderBy
       }),
-      prisma.Job.count({ where })
+      prisma.jobs.count({ where })
     ]);
 
     const totalPages = Math.ceil(total / parseInt(limit));
@@ -149,7 +149,7 @@ router.post('/', [
   const { title, description, requirements, location, type, department, salary, responsibilities, postedDate, skills, benefits } = req.body;
 
   try {
-    const job = await prisma.Job.create({
+    const job = await prisma.jobs.create({
       data: {
         title,
         description,
@@ -212,7 +212,7 @@ router.put('/', [
   const { id, title, description, requirements, location, type, isActive, department, salary, responsibilities, postedDate, skills, benefits } = req.body;
 
   try {
-    const existingJob = await prisma.Job.findUnique({
+    const existingJob = await prisma.jobs.findUnique({
       where: { id }
     });
 
@@ -237,7 +237,7 @@ router.put('/', [
     if (skills !== undefined) updateData.skills = skills;
     if (benefits !== undefined) updateData.benefits = benefits;
 
-    const job = await prisma.Job.update({
+    const job = await prisma.jobs.update({
       where: { id },
       data: updateData
     });
@@ -274,7 +274,7 @@ router.delete('/', [
   const { id } = req.query;
 
   try {
-    const job = await prisma.Job.findUnique({
+    const job = await prisma.jobs.findUnique({
       where: { id },
       include: {
         _count: {
@@ -293,7 +293,7 @@ router.delete('/', [
     }
 
     // Archive the job instead of deleting
-    const archivedJob = await prisma.Job.update({
+    const archivedJob = await prisma.jobs.update({
       where: { id },
       data: {
         isActive: false,
@@ -332,33 +332,33 @@ router.get('/analytics', asyncHandler(async (req, res) => {
       recentActivity
     ] = await Promise.all([
       // Total counts
-      prisma.Job.count(),
-      prisma.Job.count({ where: { isActive: true } }),
-      prisma.Job.count({ where: { isActive: false } }),
-      prisma.CareerApplication.count(),
+      prisma.jobs.count(),
+      prisma.jobs.count({ where: { isActive: true } }),
+      prisma.jobs.count({ where: { isActive: false } }),
+      prisma.career_applications.count(),
       
       // Applications by status
-      prisma.CareerApplication.groupBy({
+      prisma.career_applications.groupBy({
         by: ['status'],
         _count: { status: true }
       }),
       
       // Jobs by department
-      prisma.Job.groupBy({
+      prisma.jobs.groupBy({
         by: ['department'],
         where: { isActive: true },
         _count: { department: true }
       }),
       
       // Jobs by type
-      prisma.Job.groupBy({
+      prisma.jobs.groupBy({
         by: ['type'],
         where: { isActive: true },
         _count: { type: true }
       }),
       
       // Recent activity
-      prisma.CareerApplication.findMany({
+      prisma.career_applications.findMany({
         take: 10,
         orderBy: { createdAt: 'desc' },
         include: {

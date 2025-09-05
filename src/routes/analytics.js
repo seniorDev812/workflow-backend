@@ -18,7 +18,7 @@ router.post('/track', asyncHandler(async (req, res) => {
       return res.status(400).json({ success: false, error: 'path is required' });
     }
 
-    await prisma.PageView.create({
+    await prisma.page_views.create({
       data: {
         path,
         ip,

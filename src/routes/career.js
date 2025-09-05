@@ -74,7 +74,7 @@ router.get('/jobs', [
 
     // Get jobs with pagination
     const [jobs, total] = await Promise.all([
-      prisma.Job.findMany({
+      prisma.jobs.findMany({
         where,
         include: {
           _count: {
@@ -87,7 +87,7 @@ router.get('/jobs', [
         take: parseInt(limit),
         orderBy: { createdAt: 'desc' }
       }),
-      prisma.Job.count({ where })
+      prisma.jobs.count({ where })
     ]);
 
     const totalPages = Math.ceil(total / parseInt(limit));
@@ -134,7 +134,7 @@ router.get('/jobs/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const job = await prisma.Job.findUnique({
+    const job = await prisma.jobs.findUnique({
       where: { id },
       include: {
         applications: {
@@ -196,7 +196,7 @@ router.post('/apply', [
 
   try {
     // Check if job exists and is active
-    const job = await prisma.Job.findUnique({
+    const job = await prisma.jobs.findUnique({
       where: { id: jobId }
     });
 
@@ -208,7 +208,7 @@ router.post('/apply', [
     }
 
     // Create application
-    const application = await prisma.careerApplication.create({
+    const application = await prisma.career_applications.create({
       data: {
         jobId,
         name,
@@ -289,7 +289,7 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
 
     if (jobId) {
       // Check if the specific job exists and is active
-      const job = await prisma.Job.findUnique({
+      const job = await prisma.jobs.findUnique({
         where: { id: jobId }
       });
 
@@ -303,12 +303,12 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
       targetJobId = jobId;
     } else {
       // Find or create a general job entry for applications without specific job
-      let generalJob = await prisma.Job.findFirst({
+      let generalJob = await prisma.jobs.findFirst({
         where: { title: 'General Application' }
       });
 
       if (!generalJob) {
-        generalJob = await prisma.Job.create({
+        generalJob = await prisma.jobs.create({
           data: {
             title: 'General Application',
             description: 'General job application for positions not currently listed',
@@ -322,7 +322,7 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
     }
 
     // Create application
-    const application = await prisma.careerApplication.create({
+    const application = await prisma.career_applications.create({
       data: {
         jobId: targetJobId,
         name,
@@ -334,7 +334,7 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
     });
 
     // Get job title for logging
-    const job = await prisma.Job.findUnique({
+    const job = await prisma.jobs.findUnique({
       where: { id: targetJobId },
       select: { title: true }
     });
@@ -369,7 +369,7 @@ router.get('/applications/:id/resume', asyncHandler(async (req, res) => {
   try {
     logger.info(`Resume download requested for application: ${id}`);
     
-    const application = await prisma.careerApplication.findUnique({
+    const application = await prisma.career_applications.findUnique({
       where: { id },
       select: { resumeUrl: true, name: true }
     });
@@ -462,7 +462,7 @@ router.patch('/applications/bulk', protect, authorize('ADMIN'), asyncHandler(asy
         break;
       case 'delete':
         // Delete applications
-        await prisma.careerApplication.deleteMany({
+        await prisma.career_applications.deleteMany({
           where: { id: { in: applicationIds } }
         });
         
@@ -475,7 +475,7 @@ router.patch('/applications/bulk', protect, authorize('ADMIN'), asyncHandler(asy
     }
 
     // Update applications
-    const result = await prisma.careerApplication.updateMany({
+    const result = await prisma.career_applications.updateMany({
       where: { id: { in: applicationIds } },
       data: updateData
     });
@@ -533,7 +533,7 @@ router.get('/applications', [
 
     // Use optimized queries with specific field selection
     const [applications, total] = await Promise.all([
-      prisma.careerApplication.findMany({
+      prisma.career_applications.findMany({
         where,
         select: {
           id: true,
@@ -558,7 +558,7 @@ router.get('/applications', [
         take: parseInt(limit),
         orderBy: { createdAt: 'desc' }
       }),
-      prisma.careerApplication.count({ where })
+      prisma.career_applications.count({ where })
     ]);
 
     const totalPages = Math.ceil(total / parseInt(limit));
@@ -589,7 +589,7 @@ router.get('/applications/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const application = await prisma.careerApplication.findUnique({
+    const application = await prisma.career_applications.findUnique({
       where: { id },
       include: {
         job: {
@@ -642,7 +642,7 @@ router.patch('/applications/:id/status', [
   const { status } = req.body;
 
   try {
-    const application = await prisma.careerApplication.findUnique({
+    const application = await prisma.career_applications.findUnique({
       where: { id },
       include: {
         job: {
@@ -660,7 +660,7 @@ router.patch('/applications/:id/status', [
       });
     }
 
-    const updatedApplication = await prisma.careerApplication.update({
+    const updatedApplication = await prisma.career_applications.update({
       where: { id },
       data: { status },
       include: {
@@ -693,7 +693,7 @@ router.delete('/applications/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const application = await prisma.careerApplication.findUnique({
+    const application = await prisma.career_applications.findUnique({
       where: { id }
     });
 
@@ -704,7 +704,7 @@ router.delete('/applications/:id', asyncHandler(async (req, res) => {
       });
     }
 
-    await prisma.careerApplication.delete({
+    await prisma.career_applications.delete({
       where: { id }
     });
 
@@ -743,7 +743,7 @@ router.post('/jobs', [
   const { title, description, requirements, location, type } = req.body;
 
   try {
-    const job = await prisma.Job.create({
+    const job = await prisma.jobs.create({
       data: {
         title,
         description,
@@ -791,7 +791,7 @@ router.put('/jobs/:id', [
   const { title, description, requirements, location, type, isActive } = req.body;
 
   try {
-    const existingJob = await prisma.Job.findUnique({
+    const existingJob = await prisma.jobs.findUnique({
       where: { id }
     });
 
@@ -810,7 +810,7 @@ router.put('/jobs/:id', [
     if (type !== undefined) updateData.type = type;
     if (isActive !== undefined) updateData.isActive = isActive;
 
-    const job = await prisma.Job.update({
+    const job = await prisma.jobs.update({
       where: { id },
       data: updateData
     });
@@ -836,7 +836,7 @@ router.delete('/jobs/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const job = await prisma.Job.findUnique({
+    const job = await prisma.jobs.findUnique({
       where: { id },
       include: {
         _count: {
@@ -862,7 +862,7 @@ router.delete('/jobs/:id', asyncHandler(async (req, res) => {
       });
     }
 
-    await prisma.Job.delete({
+    await prisma.jobs.delete({
       where: { id }
     });
 

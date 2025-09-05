@@ -39,7 +39,7 @@ router.get('/', [
 
     // Get categories with pagination
     const [categories, total] = await Promise.all([
-      prisma.Category.findMany({
+      prisma.categories.findMany({
         where,
         include: {
           _count: {
@@ -52,7 +52,7 @@ router.get('/', [
         take: parseInt(limit),
         orderBy: { createdAt: 'desc' }
       }),
-              prisma.Category.count({ where })
+              prisma.categories.count({ where })
     ]);
 
     const totalPages = Math.ceil(total / parseInt(limit));
@@ -152,7 +152,7 @@ router.post('/', [
       .replace(/(^-|-$)/g, '');
 
     // Check if category with same name or slug already exists
-    const existingCategory = await prisma.Category.findFirst({
+    const existingCategory = await prisma.categories.findFirst({
       where: {
         OR: [
           { name: { equals: name, mode: 'insensitive' } },
@@ -168,7 +168,7 @@ router.post('/', [
       });
     }
 
-    const category = await prisma.Category.create({
+    const category = await prisma.categories.create({
       data: {
         name,
         description,
@@ -211,7 +211,7 @@ router.put('/:id', [
 
   try {
     // Check if category exists
-    const existingCategory = await prisma.Category.findUnique({
+    const existingCategory = await prisma.categories.findUnique({
       where: { id }
     });
 
@@ -234,7 +234,7 @@ router.put('/:id', [
 
     // Check if new name/slug conflicts with existing category
     if (name && name !== existingCategory.name) {
-      const conflictingCategory = await prisma.Category.findFirst({
+      const conflictingCategory = await prisma.categories.findFirst({
         where: {
           OR: [
             { name: { equals: name, mode: 'insensitive' } },
@@ -252,7 +252,7 @@ router.put('/:id', [
       }
     }
 
-    const category = await prisma.Category.update({
+    const category = await prisma.categories.update({
       where: { id },
       data: updateData
     });
@@ -278,7 +278,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const category = await prisma.Category.findUnique({
+    const category = await prisma.categories.findUnique({
       where: { id },
       include: {
         _count: {
@@ -305,7 +305,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
     }
 
     // Hard delete - completely remove from database
-    await prisma.Category.delete({
+    await prisma.categories.delete({
       where: { id }
     });
 

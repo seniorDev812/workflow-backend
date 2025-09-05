@@ -69,7 +69,7 @@ router.post('/', [
     }
     
     // Save the contact submission to database
-    const newSubmission = await prisma.ContactSubmission.create({
+    const newSubmission = await prisma.contact_submissions.create({
       data: {
         firstName,
         lastName,
@@ -131,7 +131,7 @@ router.get('/submissions', protect, authorize('ADMIN'), asyncHandler(async (req,
 
     // Get submissions with pagination
     const [submissions, total] = await Promise.all([
-      prisma.ContactSubmission.findMany({
+      prisma.contact_submissions.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         skip,
@@ -146,7 +146,7 @@ router.get('/submissions', protect, authorize('ADMIN'), asyncHandler(async (req,
           }
         }
       }),
-              prisma.ContactSubmission.count({ where })
+              prisma.contact_submissions.count({ where })
     ]);
 
     res.json({
@@ -175,8 +175,8 @@ router.get('/stats', protect, authorize('ADMIN'), asyncHandler(async (req, res) 
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     const [totalSubmissions, recentSubmissions, countryStats, statusStats] = await Promise.all([
-      prisma.ContactSubmission.count(),
-      prisma.ContactSubmission.count({
+      prisma.contact_submissions.count(),
+      prisma.contact_submissions.count({
         where: {
           createdAt: {
             gte: weekAgo
@@ -184,7 +184,7 @@ router.get('/stats', protect, authorize('ADMIN'), asyncHandler(async (req, res) 
         }
       }),
       // Get country statistics grouped by country
-      prisma.ContactSubmission.groupBy({
+      prisma.contact_submissions.groupBy({
         by: ['country'],
         _count: {
           country: true
@@ -195,7 +195,7 @@ router.get('/stats', protect, authorize('ADMIN'), asyncHandler(async (req, res) 
           }
         }
       }),
-      prisma.ContactSubmission.groupBy({
+      prisma.contact_submissions.groupBy({
         by: ['status'],
         _count: {
           status: true
@@ -244,7 +244,7 @@ router.get('/submissions/:id', protect, authorize('ADMIN'), asyncHandler(async (
   try {
     const { id } = req.params;
     
-    const submission = await prisma.ContactSubmission.findUnique({
+    const submission = await prisma.contact_submissions.findUnique({
       where: { id },
       include: {
         user: {
@@ -297,7 +297,7 @@ router.patch('/submissions/:id', protect, authorize('ADMIN'), [
     const { id } = req.params;
     const { status, read, notes } = req.body;
 
-    const submission = await prisma.ContactSubmission.update({
+    const submission = await prisma.contact_submissions.update({
       where: { id },
       data: {
         ...(status && { status }),
@@ -325,7 +325,7 @@ router.delete('/submissions/:id', protect, authorize('ADMIN'), asyncHandler(asyn
   try {
     const { id } = req.params;
     
-    const submission = await prisma.ContactSubmission.findUnique({
+    const submission = await prisma.contact_submissions.findUnique({
       where: { id }
     });
 
@@ -336,7 +336,7 @@ router.delete('/submissions/:id', protect, authorize('ADMIN'), asyncHandler(asyn
       });
     }
 
-          await prisma.ContactSubmission.delete({
+          await prisma.contact_submissions.delete({
       where: { id }
     });
 
@@ -369,7 +369,7 @@ router.delete('/submissions/bulk', protect, authorize('ADMIN'), asyncHandler(asy
     }
 
     // Delete multiple submissions
-    const result = await prisma.ContactSubmission.deleteMany({
+    const result = await prisma.contact_submissions.deleteMany({
       where: { id: { in: ids } }
     });
 

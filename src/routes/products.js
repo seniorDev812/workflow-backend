@@ -41,10 +41,10 @@ router.get('/', [
 
     // Get products with pagination
     const [products, total] = await Promise.all([
-      prisma.Product.findMany({
+      prisma.products.findMany({
         where,
         include: {
-          category: {
+          categories: {
             select: {
               id: true,
               name: true,
@@ -56,7 +56,7 @@ router.get('/', [
         take: parseInt(limit),
         orderBy: { createdAt: 'desc' }
       }),
-      prisma.Product.count({ where })
+      prisma.products.count({ where })
     ]);
 
     const totalPages = Math.ceil(total / parseInt(limit));
@@ -137,10 +137,10 @@ router.get('/filter', async (req, res) => {
     }
 
     // Get total count
-    const total = await prisma.Product.count({ where: whereClause });
+    const total = await prisma.products.count({ where: whereClause });
 
     // Get products with pagination
-    const products = await prisma.Product.findMany({
+    const products = await prisma.products.findMany({
       where: whereClause,
       ...includeClause,
       skip: offset,
@@ -191,7 +191,7 @@ router.get('/filter', async (req, res) => {
 // Get manufacturers (using category names as manufacturers for now)
 router.get('/manufacturers', async (req, res) => {
   try {
-    const categories = await prisma.Category.findMany({
+    const categories = await prisma.categories.findMany({
       where: { isActive: true },
       select: { name: true },
       orderBy: { name: 'asc' }
@@ -215,7 +215,7 @@ router.get('/manufacturers', async (req, res) => {
 // Get categories for filtering
 router.get('/categories', async (req, res) => {
   try {
-    const categories = await prisma.Category.findMany({
+    const categories = await prisma.categories.findMany({
       where: { isActive: true },
       select: {
         id: true,
@@ -259,7 +259,7 @@ router.get('/search/autocomplete', async (req, res) => {
       });
     }
 
-    const suggestions = await prisma.Product.findMany({
+    const suggestions = await prisma.products.findMany({
       where: {
         isActive: true,
         OR: [
@@ -301,7 +301,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const product = await prisma.Product.findUnique({
+    const product = await prisma.products.findUnique({
       where: { id },
       include: {
         category: {
@@ -359,7 +359,7 @@ router.post('/', [
 
   try {
     // Check if category exists
-    const category = await prisma.Category.findUnique({
+    const category = await prisma.categories.findUnique({
       where: { id: categoryId }
     });
 
@@ -370,7 +370,7 @@ router.post('/', [
       });
     }
 
-    const product = await prisma.Product.create({
+    const product = await prisma.products.create({
       data: {
         name,
         description,
@@ -428,7 +428,7 @@ router.put('/:id', [
 
   try {
     // Check if product exists
-    const existingProduct = await prisma.Product.findUnique({
+    const existingProduct = await prisma.products.findUnique({
       where: { id }
     });
 
@@ -441,7 +441,7 @@ router.put('/:id', [
 
     // Check if category exists if categoryId is provided
     if (categoryId) {
-      const category = await prisma.Category.findUnique({
+      const category = await prisma.categories.findUnique({
         where: { id: categoryId }
       });
 
@@ -461,7 +461,7 @@ router.put('/:id', [
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
     if (isActive !== undefined) updateData.isActive = isActive;
 
-    const product = await prisma.Product.update({
+    const product = await prisma.products.update({
       where: { id },
       data: updateData,
       include: {
@@ -496,7 +496,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const product = await prisma.Product.findUnique({
+    const product = await prisma.products.findUnique({
       where: { id }
     });
 
@@ -508,7 +508,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
     }
 
     // Hard delete - completely remove from database
-          await prisma.Product.delete({
+          await prisma.products.delete({
       where: { id }
     });
 
