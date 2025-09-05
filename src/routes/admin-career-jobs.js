@@ -4,6 +4,7 @@ import { protect, authorize } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import prisma from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import { invalidateJobCache } from './career.js';
 
 const router = express.Router();
 
@@ -280,7 +281,7 @@ router.put('/', [
   }
 }));
 
-// Archive job (soft delete)
+// Delete job (hard delete from database)
 router.delete('/', [
   query('id').isString().withMessage('Job ID is required'),
 ], asyncHandler(async (req, res) => {
@@ -314,29 +315,33 @@ router.delete('/', [
       });
     }
 
-    // Archive the job instead of deleting
-    const archivedJob = await prisma.jobs.update({
-      where: { id },
-      data: {
-        isActive: false,
-        archivedAt: new Date(),
-        archivedBy: req.user.id,
-        updatedAt: new Date()
-      }
+    // Check if job has applications
+    if (job._count.career_applications > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot delete job with ${job._count.career_applications} application(s). Please handle applications first.`
+      });
+    }
+
+    // Hard delete - completely remove from database
+    await prisma.jobs.delete({
+      where: { id }
     });
 
-    logger.info(`Job archived: ${job.title} by admin: ${req.user.email}`);
+    logger.info(`Job deleted: ${job.title} by admin: ${req.user.email}`);
+
+    // Invalidate cache when job is deleted
+    invalidateJobCache();
 
     res.status(200).json({
       success: true,
-      message: 'Job archived successfully',
-      data: archivedJob
+      message: 'Job deleted successfully'
     });
   } catch (error) {
-    logger.error('Job archival error:', error);
+    logger.error('Job deletion error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to archive job'
+      error: 'Failed to delete job'
     });
   }
 }));

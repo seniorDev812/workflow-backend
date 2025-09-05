@@ -1204,4 +1204,5 @@ router.delete('/applications/:id', protect, authorize('ADMIN'), asyncHandler(asy
 }));
 
 
+export { invalidateJobCache };
 export default router;
