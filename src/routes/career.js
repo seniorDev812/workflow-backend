@@ -92,9 +92,16 @@ router.get('/jobs', [
 
     const totalPages = Math.ceil(total / parseInt(limit));
 
+    // Parse JSON strings back to arrays for response
+    const transformedJobs = jobs.map(job => ({
+      ...job,
+      skills: job.skills ? JSON.parse(job.skills) : [],
+      benefits: job.benefits ? JSON.parse(job.benefits) : []
+    }));
+
     const response = {
       success: true,
-      data: jobs,
+      data: transformedJobs,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -161,9 +168,16 @@ router.get('/jobs/:id', asyncHandler(async (req, res) => {
       });
     }
 
+    // Parse JSON strings back to arrays for response
+    const transformedJob = {
+      ...job,
+      skills: job.skills ? JSON.parse(job.skills) : [],
+      benefits: job.benefits ? JSON.parse(job.benefits) : []
+    };
+
     res.status(200).json({
       success: true,
-      data: job
+      data: transformedJob
     });
   } catch (error) {
     logger.error('Job fetch error:', error);
