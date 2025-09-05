@@ -37,6 +37,23 @@ model categories {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime
   products    products[]
+  subcategories subcategories[]
+}
+
+model subcategories {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  slug        String
+  categoryId  String
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  category    categories @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  products    products[]
+
+  @@unique([categoryId, slug])
+  @@index([categoryId])
 }
 
 model contact_submissions {
@@ -122,16 +139,20 @@ model page_views {
 }
 
 model products {
-  id          String     @id @default(cuid())
-  name        String
-  description String?
-  price       Decimal?   @db.Decimal(10,2)
-  imageUrl    String?
-  categoryId  String
-  isActive    Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime
-  categories  categories @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  id            String     @id @default(cuid())
+  name          String
+  description   String?
+  oemNumber     String?
+  manufacturer  String?
+  price         Decimal?   @db.Decimal(10,2)
+  imageUrl      String?
+  categoryId    String
+  subcategoryId String?
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime
+  categories    categories @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  subcategories subcategories? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
 }
 
 model settings {

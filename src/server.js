@@ -21,6 +21,7 @@ import analyticsRoutes from './routes/analytics.js';
 
 // Import admin-specific routes
 import adminCategoriesRoutes from './routes/admin-categories.js';
+import adminSubcategoriesRoutes from './routes/admin-subcategories.js';
 import adminProductsRoutes from './routes/admin-products.js';
 import adminCareerJobsRoutes from './routes/admin-career-jobs.js';
 import adminSettingsRoutes from './routes/admin-settings.js';
@@ -186,6 +187,7 @@ app.get('/api/test-rate-limit', (req, res) => {
 // API routes - More specific routes first
 app.use('/api/auth', authRoutes);
 app.use('/api/admin/categories', adminLimiter, adminCategoriesRoutes);
+app.use('/api/admin/categories', adminLimiter, adminSubcategoriesRoutes);
 app.use('/api/admin/products', adminLimiter, adminProductsRoutes);
 app.use('/api/admin/career/jobs', adminLimiter, adminCareerJobsRoutes);
 app.use('/api/admin/settings', adminLimiter, adminSettingsRoutes);

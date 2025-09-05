@@ -14,6 +14,7 @@ router.use(authorize('ADMIN'));
 // Get products with advanced filtering and pagination
 router.get('/', [
   query('categoryId').optional().isString().withMessage('Category ID must be a string'),
+  query('subcategoryId').optional().isString().withMessage('Subcategory ID must be a string'),
   query('search').optional().isString().withMessage('Search must be a string'),
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
@@ -34,6 +35,7 @@ router.get('/', [
 
   const { 
     categoryId, 
+    subcategoryId,
     search, 
     page = 1, 
     limit = 20, 
@@ -63,11 +65,18 @@ router.get('/', [
       where.categoryId = categoryId;
     }
 
+    // Subcategory filtering
+    if (subcategoryId) {
+      where.subcategoryId = subcategoryId;
+    }
+
     // Search filtering
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
+        { description: { contains: search, mode: 'insensitive' } },
+        { oemNumber: { contains: search, mode: 'insensitive' } },
+        { manufacturer: { contains: search, mode: 'insensitive' } }
       ];
     }
 
@@ -89,6 +98,13 @@ router.get('/', [
               name: true,
               slug: true
             }
+          },
+          subcategories: {
+            select: {
+              id: true,
+              name: true,
+              slug: true
+            }
           }
         },
         skip,
@@ -101,7 +117,9 @@ router.get('/', [
     const products = productsRaw.map(p => ({
       ...p,
       category: p.categories,
-      categories: undefined
+      subcategory: p.subcategories,
+      categories: undefined,
+      subcategories: undefined
     }));
     const totalPages = Math.ceil(total / parseInt(limit));
 
@@ -128,12 +146,15 @@ router.get('/', [
 router.post('/', [
   body('name').trim().notEmpty().withMessage('Product name is required'),
   body('description').optional().isString().withMessage('Description must be a string'),
+  body('oemNumber').optional().isString().withMessage('OEM Number must be a string'),
+  body('manufacturer').optional().isString().withMessage('Manufacturer must be a string'),
   body('price').optional().custom((value) => {
     if (value === null || value === undefined || value === '') return true;
     const num = parseFloat(value);
     return !isNaN(num) && num >= 0;
   }).withMessage('Price must be a positive number'),
   body('categoryId').isString().withMessage('Category ID is required'),
+  body('subcategoryId').optional().isString().withMessage('Subcategory ID must be a string'),
   body('imageUrl').optional().isString().withMessage('Image URL must be a string'),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
@@ -145,7 +166,7 @@ router.post('/', [
     });
   }
 
-  const { name, description, price, categoryId, imageUrl } = req.body;
+  const { name, description, oemNumber, manufacturer, price, categoryId, subcategoryId, imageUrl } = req.body;
 
   try {
     // Check if category exists
@@ -160,12 +181,32 @@ router.post('/', [
       });
     }
 
+    // Check if subcategory exists and belongs to the category
+    if (subcategoryId) {
+      const subcategory = await prisma.subcategories.findFirst({
+        where: { 
+          id: subcategoryId,
+          categoryId: categoryId
+        }
+      });
+
+      if (!subcategory) {
+        return res.status(400).json({
+          success: false,
+          error: 'Subcategory not found or does not belong to the selected category'
+        });
+      }
+    }
+
     const productRaw = await prisma.products.create({
       data: {
         name,
         description,
+        oemNumber,
+        manufacturer,
         price: price ? String(price) : null,
         categoryId,
+        subcategoryId: subcategoryId || null,
         imageUrl,
         updatedAt: new Date()
       },
@@ -176,10 +217,23 @@ router.post('/', [
             name: true,
             slug: true
           }
+        },
+        subcategories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
         }
       }
     });
-    const product = { ...productRaw, category: productRaw.categories, categories: undefined };
+    const product = { 
+      ...productRaw, 
+      category: productRaw.categories, 
+      subcategory: productRaw.subcategories,
+      categories: undefined,
+      subcategories: undefined
+    };
 
     logger.info(`Product created: ${product.name} by admin: ${req.user.email}`);
 
@@ -202,12 +256,15 @@ router.put('/', [
   body('id').isString().withMessage('Product ID is required'),
   body('name').optional().trim().notEmpty().withMessage('Product name cannot be empty'),
   body('description').optional().isString().withMessage('Description must be a string'),
+  body('oemNumber').optional().isString().withMessage('OEM Number must be a string'),
+  body('manufacturer').optional().isString().withMessage('Manufacturer must be a string'),
   body('price').optional().custom((value) => {
     if (value === null || value === undefined || value === '') return true;
     const num = parseFloat(value);
     return !isNaN(num) && num >= 0;
   }).withMessage('Price must be a positive number'),
   body('categoryId').optional().isString().withMessage('Category ID must be a string'),
+  body('subcategoryId').optional().isString().withMessage('Subcategory ID must be a string'),
   body('imageUrl').optional().isString().withMessage('Image URL must be a string'),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
@@ -219,7 +276,7 @@ router.put('/', [
     });
   }
 
-  const { id, name, description, price, categoryId, imageUrl } = req.body;
+  const { id, name, description, oemNumber, manufacturer, price, categoryId, subcategoryId, imageUrl } = req.body;
 
   try {
     // Check if product exists
@@ -248,11 +305,32 @@ router.put('/', [
       }
     }
 
+    // Check if subcategory exists and belongs to the category
+    if (subcategoryId) {
+      const finalCategoryId = categoryId || existingProduct.categoryId;
+      const subcategory = await prisma.subcategories.findFirst({
+        where: { 
+          id: subcategoryId,
+          categoryId: finalCategoryId
+        }
+      });
+
+      if (!subcategory) {
+        return res.status(400).json({
+          success: false,
+          error: 'Subcategory not found or does not belong to the selected category'
+        });
+      }
+    }
+
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
+    if (oemNumber !== undefined) updateData.oemNumber = oemNumber;
+    if (manufacturer !== undefined) updateData.manufacturer = manufacturer;
     if (price !== undefined) updateData.price = price ? String(price) : null;
     if (categoryId !== undefined) updateData.categoryId = categoryId;
+    if (subcategoryId !== undefined) updateData.subcategoryId = subcategoryId || null;
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
 
     const productRaw = await prisma.products.update({
@@ -265,10 +343,23 @@ router.put('/', [
             name: true,
             slug: true
           }
+        },
+        subcategories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
         }
       }
     });
-    const product = { ...productRaw, category: productRaw.categories, categories: undefined };
+    const product = { 
+      ...productRaw, 
+      category: productRaw.categories, 
+      subcategory: productRaw.subcategories,
+      categories: undefined,
+      subcategories: undefined
+    };
 
     logger.info(`Product updated: ${product.name} by admin: ${req.user.email}`);
 
