@@ -252,6 +252,61 @@ router.post('/apply', [
   }
 }));
 
+// Submit resume application (General resume submission) - Public route
+router.post('/resume-submission', [
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('phone').optional().isString().withMessage('Phone must be a string'),
+  body('position').optional().isString().withMessage('Position must be a string'),
+  body('message').optional().isString().withMessage('Message must be a string'),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      details: errors.array()
+    });
+  }
+
+  const { name, email, phone, position, message } = req.body;
+  const resumeUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+  try {
+    // Create a general application record
+    const application = await prisma.career_applications.create({
+      data: {
+        name,
+        email,
+        phone,
+        coverLetter: message,
+        resumeUrl,
+        status: 'PENDING'
+      }
+    });
+
+    logger.info(`General resume submission received from: ${email}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Resume submitted successfully',
+      data: {
+        id: application.id,
+        name: application.name,
+        email: application.email,
+        status: application.status,
+        createdAt: application.createdAt
+      }
+    });
+  } catch (error) {
+    logger.error('Resume submission error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit resume'
+    });
+  }
+}));
+
 // Submit job application with file upload
 router.post('/applications', uploadResume, handleResumeUploadError, [
   body('name').trim().notEmpty().withMessage('Name is required'),
@@ -881,6 +936,202 @@ router.delete('/jobs/:id', asyncHandler(async (req, res) => {
   }
 }));
 
+// Get all career applications (Admin only)
+router.get('/applications', protect, authorize('ADMIN'), [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+  query('status').optional().isString().withMessage('Status must be a string'),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      details: errors.array()
+    });
+  }
+
+  const { page = 1, limit = 10, status } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  try {
+    const where = {};
+    if (status) {
+      where.status = status;
+    }
+
+    const [applications, total] = await Promise.all([
+      prisma.career_applications.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          resumeUrl: true,
+          coverLetter: true,
+          jobs: {
+            select: {
+              id: true,
+              title: true,
+              type: true,
+              location: true
+            }
+          }
+        },
+        skip,
+        take: parseInt(limit),
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.career_applications.count({ where })
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: applications,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / parseInt(limit)),
+        hasNext: skip + parseInt(limit) < total,
+        hasPrev: parseInt(page) > 1
+      }
+    });
+  } catch (error) {
+    logger.error('Applications fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch applications'
+    });
+  }
+}));
+
+// Get single career application (Admin only)
+router.get('/applications/:id', protect, authorize('ADMIN'), asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const application = await prisma.career_applications.findUnique({
+      where: { id },
+      include: {
+        jobs: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            location: true,
+            description: true
+          }
+        }
+      }
+    });
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        error: 'Application not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: application
+    });
+  } catch (error) {
+    logger.error('Application fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch application'
+    });
+  }
+}));
+
+// Update application status (Admin only)
+router.patch('/applications/:id/status', protect, authorize('ADMIN'), [
+  body('status').isIn(['PENDING', 'REVIEWED', 'ACCEPTED', 'REJECTED']).withMessage('Invalid status'),
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      details: errors.array()
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const application = await prisma.career_applications.update({
+      where: { id },
+      data: { 
+        status,
+        updatedAt: new Date()
+      },
+      include: {
+        jobs: {
+          select: {
+            title: true
+          }
+        }
+      }
+    });
+
+    logger.info(`Application status updated to ${status} for: ${application.email}`);
+
+    res.status(200).json({
+      success: true,
+      data: application,
+      message: 'Application status updated successfully'
+    });
+  } catch (error) {
+    logger.error('Application status update error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update application status'
+    });
+  }
+}));
+
+// Delete career application (Admin only)
+router.delete('/applications/:id', protect, authorize('ADMIN'), asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const application = await prisma.career_applications.findUnique({
+      where: { id }
+    });
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        error: 'Application not found'
+      });
+    }
+
+    await prisma.career_applications.delete({
+      where: { id }
+    });
+
+    logger.info(`Application deleted: ${application.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Application deleted successfully'
+    });
+  } catch (error) {
+    logger.error('Application deletion error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete application'
+    });
+  }
+}));
 
 
 export default router;
