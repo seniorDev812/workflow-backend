@@ -83,7 +83,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const category = await prisma.category.findUnique({
+    const category = await prisma.categories.findUnique({
       where: { id },
       include: {
         products: {
@@ -172,7 +172,8 @@ router.post('/', [
       data: {
         name,
         description,
-        slug
+        slug,
+        updatedAt: new Date()
       }
     });
 
@@ -254,7 +255,7 @@ router.put('/:id', [
 
     const category = await prisma.categories.update({
       where: { id },
-      data: updateData
+      data: { ...updateData, updatedAt: new Date() }
     });
 
     logger.info(`Category updated: ${category.name} by admin: ${req.user.email}`);

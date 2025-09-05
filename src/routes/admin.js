@@ -107,7 +107,7 @@ async function getRealPerformanceMetrics() {
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
     // Fetch recent messages and compute avg response time based on createdAt/updatedAt
-    const recentMessages = await prisma.Message.findMany({
+    const recentMessages = await prisma.messages.findMany({
       where: { createdAt: { gte: oneHourAgo } },
       select: { createdAt: true, updatedAt: true },
       orderBy: { createdAt: 'desc' },
@@ -136,7 +136,7 @@ async function getRealPerformanceMetrics() {
     const errorRate = Math.random() * 0.1;
 
     // Active users: count distinct IPs from PageView in last 15 minutes
-    const uniqueActiveIps = await prisma.PageView.groupBy({
+    const uniqueActiveIps = await prisma.page_views.groupBy({
       by: ['ip'],
       where: { createdAt: { gte: fifteenMinutesAgo } },
       _count: { ip: true },
@@ -276,8 +276,8 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
 
     // Real analytics from page views table (fallback to 0)
     const [pageViews, uniqueVisitors] = await Promise.all([
-      prisma.PageView.count(),
-      prisma.PageView.groupBy({
+      prisma.page_views.count(),
+      prisma.page_views.groupBy({
         by: ['ip'],
         _count: { ip: true },
       }).then((rows) => rows.length).catch(() => 0),
@@ -296,7 +296,7 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
         id: '1',
         type: 'application',
         title: 'New job application',
-        description: `Application for ${recentApplications[0]?.job?.title || 'General Position'}`,
+        description: `Application for ${recentApplications[0]?.jobs?.title || 'General Position'}`,
         timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
         user: recentApplications[0]?.name
       },
@@ -354,7 +354,7 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
 // @access  Private (Admin only)
 router.get('/settings', asyncHandler(async (req, res) => {
   try {
-    const settings = await prisma.Setting.findMany();
+    const settings = await prisma.settings.findMany();
     
     // Convert to key-value object
     const settingsObject = settings.reduce((acc, setting) => {
@@ -415,7 +415,7 @@ router.put('/settings', asyncHandler(async (req, res) => {
       const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
       const type = typeof value === 'object' ? 'json' : typeof value;
 
-      return prisma.Setting.upsert({
+      return prisma.settings.upsert({
         where: { key },
         update: { value: stringValue, type },
         create: { key, value: stringValue, type }
