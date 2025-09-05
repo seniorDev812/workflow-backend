@@ -20,11 +20,17 @@ const __dirname = dirname(__filename);
 
 const router = express.Router();
 
-// Cache invalidation function
+// Smart cache invalidation - only clear job-related entries
 const invalidateJobCache = () => {
   const beforeSize = jobCache.size;
-  jobCache.clear();
-  logger.info(`Job cache invalidated. Cleared ${beforeSize} entries.`);
+  // Only clear entries that contain job data, keep other cached data
+  for (const [key, value] of jobCache.entries()) {
+    if (key.includes('jobs-') || key.includes('career-')) {
+      jobCache.delete(key);
+    }
+  }
+  const afterSize = jobCache.size;
+  logger.info(`Job cache invalidated. Cleared ${beforeSize - afterSize} job-related entries.`);
 };
 
 // Public routes - Get all active jobs with caching
@@ -824,6 +830,9 @@ router.post('/jobs', [
 
     logger.info(`Job created: ${job.title} by admin: ${req.user.email}`);
 
+    // Invalidate cache when new job is created
+    invalidateJobCache();
+
     res.status(201).json({
       success: true,
       data: job,
@@ -886,6 +895,9 @@ router.put('/jobs/:id', [
 
     logger.info(`Job updated: ${job.title} by admin: ${req.user.email}`);
 
+    // Invalidate cache when job is updated
+    invalidateJobCache();
+
     res.status(200).json({
       success: true,
       data: job,
@@ -936,6 +948,9 @@ router.delete('/jobs/:id', asyncHandler(async (req, res) => {
     });
 
     logger.info(`Job deleted: ${job.title} by admin: ${req.user.email}`);
+
+    // Invalidate cache when job is deleted
+    invalidateJobCache();
 
     res.status(200).json({
       success: true,
