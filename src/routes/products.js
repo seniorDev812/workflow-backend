@@ -50,6 +50,13 @@ router.get('/', [
               name: true,
               slug: true
             }
+          },
+          subcategories: {
+            select: {
+              id: true,
+              name: true,
+              slug: true
+            }
           }
         },
         skip,
@@ -226,17 +233,34 @@ router.get('/categories', async (req, res) => {
       orderBy: { name: 'asc' }
     });
 
-    // Transform to match frontend expectations
-    const transformedCategories = categories.map(category => ({
-      id: category.id,
-      name: category.name,
-      slug: category.slug,
-      subcategories: [] // We'll add subcategories later if needed
-    }));
+    // Get subcategories for each category
+    const categoriesWithSubcategories = await Promise.all(
+      categories.map(async (category) => {
+        const subcategories = await prisma.subcategories.findMany({
+          where: { 
+            categoryId: category.id,
+            isActive: true 
+          },
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          },
+          orderBy: { name: 'asc' }
+        });
+
+        return {
+          id: category.id,
+          name: category.name,
+          slug: category.slug,
+          subcategories
+        };
+      })
+    );
 
     res.json({
       success: true,
-      data: transformedCategories
+      data: categoriesWithSubcategories
     });
   } catch (error) {
     console.error('Error fetching categories:', error);
