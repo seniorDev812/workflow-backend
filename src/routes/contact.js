@@ -15,7 +15,9 @@ router.post('/', [
   body('country').trim().notEmpty().withMessage('Country is required'),
   body('phone').trim().notEmpty().withMessage('Phone number is required'),
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
-  body('requirements').isJSON().withMessage('Requirements must be valid JSON'),
+  body('contactReason').trim().notEmpty().withMessage('Contact reason is required'),
+  body('message').optional().trim(),
+  body('requirements').optional().isJSON().withMessage('Requirements must be valid JSON'),
   body('productContext').optional().isJSON().withMessage('Product context must be valid JSON'),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
@@ -34,6 +36,8 @@ router.post('/', [
     country, 
     phone, 
     email, 
+    contactReason,
+    message,
     requirements, 
     productContext 
   } = req.body;
@@ -43,12 +47,31 @@ router.post('/', [
     let parsedRequirements = [];
     let parsedProductContext = null;
 
-    try {
-      parsedRequirements = JSON.parse(requirements);
-    } catch (error) {
+    // Only parse requirements if contact reason is sales
+    if (contactReason === 'sales' && requirements) {
+      try {
+        parsedRequirements = JSON.parse(requirements);
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid requirements format'
+        });
+      }
+
+      // Validate requirements structure for sales
+      if (!Array.isArray(parsedRequirements) || parsedRequirements.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'At least one product requirement is required for sales inquiries'
+        });
+      }
+    }
+
+    // Validate message for non-sales contacts
+    if (contactReason !== 'sales' && (!message || message.trim().length === 0)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid requirements format'
+        error: 'Please provide details about your inquiry'
       });
     }
 
@@ -58,14 +81,6 @@ router.post('/', [
       } catch (error) {
         logger.warn('Invalid product context format:', error);
       }
-    }
-
-    // Validate requirements structure
-    if (!Array.isArray(parsedRequirements) || parsedRequirements.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'At least one product requirement is required'
-      });
     }
     
     // Save the contact submission to database
@@ -77,7 +92,9 @@ router.post('/', [
         country,
         phone,
         email,
-        requirements: parsedRequirements,
+        contactReason,
+        message: message || null,
+        requirements: parsedRequirements.length > 0 ? parsedRequirements : null,
         productContext: parsedProductContext,
         updatedAt: new Date()
       }
@@ -86,6 +103,8 @@ router.post('/', [
     // Log the contact submission
     logger.info(`New contact form submission from: ${email}`, {
       contact: { firstName, lastName, company, country, phone, email },
+      contactReason,
+      message: message || null,
       requirements: parsedRequirements,
       productContext: parsedProductContext,
       submissionId: newSubmission.id
