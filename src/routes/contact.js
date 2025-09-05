@@ -137,7 +137,7 @@ router.get('/submissions', protect, authorize('ADMIN'), asyncHandler(async (req,
         skip,
         take: parseInt(limit),
         include: {
-          user: {
+          users: {
             select: {
               id: true,
               name: true,
@@ -247,7 +247,7 @@ router.get('/submissions/:id', protect, authorize('ADMIN'), asyncHandler(async (
     const submission = await prisma.contact_submissions.findUnique({
       where: { id },
       include: {
-        user: {
+        users: {
           select: {
             id: true,
             name: true,

@@ -105,7 +105,7 @@ router.get('/filter', async (req, res) => {
     let whereClause = { isActive: true };
     let includeClause = {
       include: {
-        category: {
+        categories: {
           select: {
             id: true,
             name: true,
@@ -304,7 +304,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
     const product = await prisma.products.findUnique({
       where: { id },
       include: {
-        category: {
+        categories: {
           select: {
             id: true,
             name: true,
@@ -379,7 +379,7 @@ router.post('/', [
         imageUrl
       },
       include: {
-        category: {
+        categories: {
           select: {
             id: true,
             name: true,
@@ -465,7 +465,7 @@ router.put('/:id', [
       where: { id },
       data: updateData,
       include: {
-        category: {
+        categories: {
           select: {
             id: true,
             name: true,

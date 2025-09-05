@@ -266,7 +266,7 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
         email: true,
         status: true,
         createdAt: true,
-        job: {
+        jobs: {
           select: {
             title: true
           }

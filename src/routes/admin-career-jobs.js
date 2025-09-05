@@ -88,7 +88,7 @@ router.get('/', [
         include: {
           _count: {
             select: {
-              applications: true
+              career_applications: true
             }
           }
         },
