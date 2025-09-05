@@ -47,7 +47,9 @@ model contact_submissions {
   country        String
   phone          String
   email          String
-  requirements   String // JSON as string for SQLite
+  contactReason  String
+  message        String?
+  requirements   String? // JSON as string for SQLite
   productContext String? // JSON as string for SQLite
   status         String   @default("NEW")
   read           Boolean  @default(false)
@@ -62,6 +64,7 @@ model contact_submissions {
   @@index([email])
   @@index([read])
   @@index([status])
+  @@index([contactReason])
 }
 
 model jobs {
