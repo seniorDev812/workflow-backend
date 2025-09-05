@@ -215,14 +215,7 @@ router.delete('/', [
 
   try {
     const category = await prisma.categories.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: {
-            products: true
-          }
-        }
-      }
+      where: { id }
     });
 
     if (!category) {
@@ -232,8 +225,12 @@ router.delete('/', [
       });
     }
 
-    // Check if category has products
-    if (category._count.products > 0) {
+    // Check if category has ACTIVE products (archived products are allowed)
+    const activeProductsCount = await prisma.products.count({
+      where: { categoryId: id, isActive: true }
+    });
+
+    if (activeProductsCount > 0) {
       return res.status(400).json({
         success: false,
         error: 'Cannot delete category with existing products'
