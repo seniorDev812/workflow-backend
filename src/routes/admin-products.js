@@ -79,11 +79,11 @@ router.get('/', [
     }
 
     // Get products with pagination
-    const [products, total] = await Promise.all([
+    const [productsRaw, total] = await Promise.all([
       prisma.products.findMany({
         where,
         include: {
-          category: {
+          categories: {
             select: {
               id: true,
               name: true,
@@ -98,6 +98,11 @@ router.get('/', [
       prisma.products.count({ where })
     ]);
 
+    const products = productsRaw.map(p => ({
+      ...p,
+      category: p.categories,
+      categories: undefined
+    }));
     const totalPages = Math.ceil(total / parseInt(limit));
 
     res.status(200).json({
@@ -155,16 +160,16 @@ router.post('/', [
       });
     }
 
-    const product = await prisma.products.create({
+    const productRaw = await prisma.products.create({
       data: {
         name,
         description,
-        price: price ? parseFloat(price) : null,
+        price: price ? String(price) : null,
         categoryId,
         imageUrl
       },
       include: {
-        category: {
+        categories: {
           select: {
             id: true,
             name: true,
@@ -173,6 +178,7 @@ router.post('/', [
         }
       }
     });
+    const product = { ...productRaw, category: productRaw.categories, categories: undefined };
 
     logger.info(`Product created: ${product.name} by admin: ${req.user.email}`);
 
@@ -244,15 +250,15 @@ router.put('/', [
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (price !== undefined) updateData.price = price ? parseFloat(price) : null;
+    if (price !== undefined) updateData.price = price ? String(price) : null;
     if (categoryId !== undefined) updateData.categoryId = categoryId;
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
 
-    const product = await prisma.products.update({
+    const productRaw = await prisma.products.update({
       where: { id },
       data: updateData,
       include: {
-        category: {
+        categories: {
           select: {
             id: true,
             name: true,
@@ -261,6 +267,7 @@ router.put('/', [
         }
       }
     });
+    const product = { ...productRaw, category: productRaw.categories, categories: undefined };
 
     logger.info(`Product updated: ${product.name} by admin: ${req.user.email}`);
 
@@ -364,7 +371,7 @@ router.get('/analytics', asyncHandler(async (req, res) => {
         take: 10,
         orderBy: { updatedAt: 'desc' },
         include: {
-          category: {
+          categories: {
             select: { name: true }
           }
         }
@@ -394,7 +401,7 @@ router.get('/analytics', asyncHandler(async (req, res) => {
     };
 
     priceRanges.forEach(p => {
-      const price = parseFloat(p.price);
+      const price = parseFloat(String(p.price));
       if (price < 10) priceRangeStats.under10++;
       else if (price < 50) priceRangeStats.under50++;
       else if (price < 100) priceRangeStats.under100++;
@@ -412,7 +419,7 @@ router.get('/analytics', asyncHandler(async (req, res) => {
         },
         productsByCategory: productsByCategoryWithNames,
         priceRanges: priceRangeStats,
-        recentActivity
+        recentActivity: recentActivity.map(p => ({ ...p, category: p.categories, categories: undefined }))
       }
     });
   } catch (error) {
