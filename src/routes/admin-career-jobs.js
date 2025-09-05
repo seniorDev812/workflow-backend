@@ -101,9 +101,16 @@ router.get('/', [
 
     const totalPages = Math.ceil(total / parseInt(limit));
 
+    // Parse JSON strings back to arrays for skills and benefits
+    const transformedJobs = jobs.map(job => ({
+      ...job,
+      skills: job.skills ? JSON.parse(job.skills) : [],
+      benefits: job.benefits ? JSON.parse(job.benefits) : []
+    }));
+
     res.status(200).json({
       success: true,
-      data: jobs,
+      data: transformedJobs,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -131,7 +138,7 @@ router.post('/', [
   body('department').optional().isString().withMessage('Department must be a string'),
   body('salary').optional().isString().withMessage('Salary must be a string'),
   body('responsibilities').optional().isString().withMessage('Responsibilities must be a string'),
-  body('postedDate').optional().isISO8601().toDate().withMessage('postedDate must be a valid date'),
+  body('postedDate').optional().isDate().withMessage('postedDate must be a valid date'),
   body('skills').optional().isArray().withMessage('Skills must be an array of strings'),
   body('skills.*').optional().isString().withMessage('Each skill must be a string'),
   body('benefits').optional().isArray().withMessage('Benefits must be an array of strings'),
@@ -159,18 +166,25 @@ router.post('/', [
         department,
         salary,
         responsibilities,
-        postedDate: postedDate ?? undefined,
+        postedDate: postedDate ? new Date(postedDate) : undefined,
         updatedAt: new Date(),
-        skills: skills ?? [],
-        benefits: benefits ?? []
+        skills: JSON.stringify(skills ?? []),
+        benefits: JSON.stringify(benefits ?? [])
       }
     });
 
     logger.info(`Job created: ${job.title} by admin: ${req.user.email}`);
 
+    // Parse JSON strings back to arrays for response
+    const transformedJob = {
+      ...job,
+      skills: job.skills ? JSON.parse(job.skills) : [],
+      benefits: job.benefits ? JSON.parse(job.benefits) : []
+    };
+
     res.status(201).json({
       success: true,
-      data: job,
+      data: transformedJob,
       message: 'Job created successfully'
     });
   } catch (error) {
@@ -195,7 +209,7 @@ router.put('/', [
   body('department').optional().isString().withMessage('Department must be a string'),
   body('salary').optional().isString().withMessage('Salary must be a string'),
   body('responsibilities').optional().isString().withMessage('Responsibilities must be a string'),
-  body('postedDate').optional().isISO8601().toDate().withMessage('postedDate must be a valid date'),
+  body('postedDate').optional().isDate().withMessage('postedDate must be a valid date'),
   body('skills').optional().isArray().withMessage('Skills must be an array of strings'),
   body('skills.*').optional().isString().withMessage('Each skill must be a string'),
   body('benefits').optional().isArray().withMessage('Benefits must be an array of strings'),
@@ -234,9 +248,9 @@ router.put('/', [
     if (department !== undefined) updateData.department = department;
     if (salary !== undefined) updateData.salary = salary;
     if (responsibilities !== undefined) updateData.responsibilities = responsibilities;
-    if (postedDate !== undefined) updateData.postedDate = postedDate;
-    if (skills !== undefined) updateData.skills = skills;
-    if (benefits !== undefined) updateData.benefits = benefits;
+    if (postedDate !== undefined) updateData.postedDate = postedDate ? new Date(postedDate) : null;
+    if (skills !== undefined) updateData.skills = JSON.stringify(skills);
+    if (benefits !== undefined) updateData.benefits = JSON.stringify(benefits);
 
     const job = await prisma.jobs.update({
       where: { id },
@@ -245,9 +259,16 @@ router.put('/', [
 
     logger.info(`Job updated: ${job.title} by admin: ${req.user.email}`);
 
+    // Parse JSON strings back to arrays for response
+    const transformedJob = {
+      ...job,
+      skills: job.skills ? JSON.parse(job.skills) : [],
+      benefits: job.benefits ? JSON.parse(job.benefits) : []
+    };
+
     res.status(200).json({
       success: true,
-      data: job,
+      data: transformedJob,
       message: 'Job updated successfully'
     });
   } catch (error) {
