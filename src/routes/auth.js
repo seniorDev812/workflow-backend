@@ -48,7 +48,7 @@ router.post('/login', loginLimiter, [
 
   try {
     // Find user by email
-    const user = await prisma.User.findUnique({
+    const user = await prisma.users.findUnique({
       where: { email }
     });
 
@@ -82,7 +82,7 @@ router.post('/login', loginLimiter, [
     const refreshToken = generateRefreshToken(user.id);
 
     // Update last login (optional)
-    await prisma.User.update({
+    await prisma.users.update({
       where: { id: user.id },
       data: { updatedAt: new Date() }
     });
@@ -147,7 +147,7 @@ router.post('/forgot-password', [
 
   try {
     // Find user by email
-    const user = await prisma.User.findUnique({
+    const user = await prisma.users.findUnique({
       where: { email }
     });
 
@@ -174,7 +174,7 @@ router.post('/forgot-password', [
     const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     // Store reset token in database
-    await prisma.User.update({
+    await prisma.users.update({
       where: { id: user.id },
       data: {
         resetToken,
@@ -236,7 +236,7 @@ router.post('/refresh', [
     const decoded = jwt.default.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
 
     // Check if user exists and is active
-    const user = await prisma.User.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: decoded.userId },
       select: {
         id: true,
@@ -315,7 +315,7 @@ router.put('/change-password', [
 
   try {
     // Get user with password
-    const user = await prisma.User.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: req.user.id }
     });
 
@@ -332,7 +332,7 @@ router.put('/change-password', [
     const hashedNewPassword = await hashPassword(newPassword);
 
     // Update password
-    await prisma.User.update({
+    await prisma.users.update({
       where: { id: req.user.id },
       data: { password: hashedNewPassword }
     });

@@ -66,7 +66,7 @@ export const protect = asyncHandler(async (req, res, next) => {
     const decoded = verifyToken(token);
 
     // Get user from database
-    const user = await prisma.User.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: decoded.userId },
       select: {
         id: true,
@@ -137,7 +137,7 @@ export const optionalAuth = asyncHandler(async (req, res, next) => {
   if (token) {
     try {
       const decoded = verifyToken(token);
-      const user = await prisma.User.findUnique({
+      const user = await prisma.users.findUnique({
         where: { id: decoded.userId },
         select: {
           id: true,
