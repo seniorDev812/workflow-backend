@@ -295,14 +295,16 @@ router.post('/resume-submission', [
 
   try {
     // Find or create a general job entry for applications without specific job
+    const jobTitle = position && position.trim() ? position.trim() : 'General Application';
+    
     let generalJob = await prisma.jobs.findFirst({
-      where: { title: 'General Application' }
+      where: { title: jobTitle }
     });
 
     if (!generalJob) {
       generalJob = await prisma.jobs.create({
         data: {
-          title: 'General Application',
+          title: jobTitle,
           description: 'General job application for positions not currently listed',
           type: 'FULL_TIME',
           isActive: true,
@@ -397,20 +399,36 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
         });
       }
 
+      // If position is provided and different from job title, update the job title
+      if (position && position.trim() && position.trim() !== job.title) {
+        await prisma.jobs.update({
+          where: { id: jobId },
+          data: { 
+            title: position.trim(),
+            updatedAt: new Date()
+          }
+        });
+      }
+
       targetJobId = jobId;
     } else {
       // Find or create a general job entry for applications without specific job
+      const jobTitle = position && position.trim() ? position.trim() : 'General Application';
+      
       let generalJob = await prisma.jobs.findFirst({
-        where: { title: 'General Application' }
+        where: { title: jobTitle }
       });
 
       if (!generalJob) {
         generalJob = await prisma.jobs.create({
           data: {
-            title: 'General Application',
+            title: jobTitle,
             description: 'General job application for positions not currently listed',
             type: 'FULL_TIME',
-            isActive: true
+            isActive: true,
+            updatedAt: new Date(),
+            skills: JSON.stringify([]),
+            benefits: JSON.stringify([])
           }
         });
       }
