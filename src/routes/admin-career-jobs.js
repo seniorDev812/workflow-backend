@@ -160,6 +160,7 @@ router.post('/', [
         salary,
         responsibilities,
         postedDate: postedDate ?? undefined,
+        updatedAt: new Date(),
         skills: skills ?? [],
         benefits: benefits ?? []
       }
@@ -239,7 +240,7 @@ router.put('/', [
 
     const job = await prisma.jobs.update({
       where: { id },
-      data: updateData
+      data: { ...updateData, updatedAt: new Date() }
     });
 
     logger.info(`Job updated: ${job.title} by admin: ${req.user.email}`);
@@ -298,7 +299,8 @@ router.delete('/', [
       data: {
         isActive: false,
         archivedAt: new Date(),
-        archivedBy: req.user.id
+        archivedBy: req.user.id,
+        updatedAt: new Date()
       }
     });
 

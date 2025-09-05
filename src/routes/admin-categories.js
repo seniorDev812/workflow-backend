@@ -83,7 +83,8 @@ router.post('/', [
     const category = await prisma.categories.create({
       data: {
         name,
-        slug
+        slug,
+        updatedAt: new Date()
       }
     });
 
@@ -159,7 +160,8 @@ router.patch('/', [
       where: { id },
       data: {
         name,
-        slug
+        slug,
+        updatedAt: new Date()
       }
     });
 

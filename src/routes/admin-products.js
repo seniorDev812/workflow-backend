@@ -166,7 +166,8 @@ router.post('/', [
         description,
         price: price ? String(price) : null,
         categoryId,
-        imageUrl
+        imageUrl,
+        updatedAt: new Date()
       },
       include: {
         categories: {
@@ -256,7 +257,7 @@ router.put('/', [
 
     const productRaw = await prisma.products.update({
       where: { id },
-      data: updateData,
+      data: { ...updateData, updatedAt: new Date() },
       include: {
         categories: {
           select: {
