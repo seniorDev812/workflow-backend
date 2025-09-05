@@ -144,7 +144,7 @@ router.get('/jobs/:id', asyncHandler(async (req, res) => {
     const job = await prisma.jobs.findUnique({
       where: { id },
       include: {
-        applications: {
+        career_applications: {
           select: {
             id: true,
             name: true,
@@ -155,7 +155,7 @@ router.get('/jobs/:id', asyncHandler(async (req, res) => {
         },
         _count: {
           select: {
-            applications: true
+            career_applications: true
           }
         }
       }
@@ -924,7 +924,7 @@ router.delete('/jobs/:id', asyncHandler(async (req, res) => {
     }
 
     // Check if job has applications
-    if (job._count.applications > 0) {
+    if (job._count.career_applications > 0) {
       return res.status(400).json({
         success: false,
         error: 'Cannot delete job with existing applications'
