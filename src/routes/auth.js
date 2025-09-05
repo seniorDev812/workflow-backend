@@ -278,16 +278,24 @@ router.post('/refresh', [
 // @route   POST /api/auth/logout
 // @access  Private
 router.post('/logout', protect, asyncHandler(async (req, res) => {
-  // Clear cookies
-  res.clearCookie('adminToken');
-  res.clearCookie('refreshToken');
+  try {
+    // Clear the HTTP-only cookie
+    res.clearCookie('adminToken');
+    res.clearCookie('refreshToken');
 
-  logger.info(`User logged out: ${req.user.email}`);
+    logger.info(`User logged out: ${req.user.email}`);
 
-  res.status(200).json({
-    success: true,
-    message: 'Logout successful'
-  });
+    res.status(200).json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    logger.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to logout'
+    });
+  }
 }));
 
 // @desc    Change password
