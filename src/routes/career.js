@@ -235,7 +235,8 @@ router.post('/apply', [
         email,
         phone,
         coverLetter,
-        resumeUrl
+        resumeUrl,
+        updatedAt: new Date()
       },
       include: {
         jobs: {
@@ -293,15 +294,36 @@ router.post('/resume-submission', [
   const resumeUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
   try {
+    // Find or create a general job entry for applications without specific job
+    let generalJob = await prisma.jobs.findFirst({
+      where: { title: 'General Application' }
+    });
+
+    if (!generalJob) {
+      generalJob = await prisma.jobs.create({
+        data: {
+          title: 'General Application',
+          description: 'General job application for positions not currently listed',
+          type: 'FULL_TIME',
+          isActive: true,
+          updatedAt: new Date(),
+          skills: JSON.stringify([]),
+          benefits: JSON.stringify([])
+        }
+      });
+    }
+
     // Create a general application record
     const application = await prisma.career_applications.create({
       data: {
+        jobId: generalJob.id,
         name,
         email,
         phone,
         coverLetter: message,
         resumeUrl,
-        status: 'PENDING'
+        status: 'PENDING',
+        updatedAt: new Date()
       }
     });
 
@@ -405,6 +427,7 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
         phone,
         coverLetter: message,
         resumeUrl,
+        updatedAt: new Date()
       }
     });
 
