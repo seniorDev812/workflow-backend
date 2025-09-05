@@ -30,7 +30,7 @@ if (envContent.includes('supabase.co') || envContent.includes('neon.tech')) {
   console.log('⚠️  Database URL appears to be local');
   console.log('Please update your .env file with cloud database URL first');
   console.log('See CLOUD_SETUP.md for instructions\n');
-}
+} 
 
 console.log('\n📋 Migration Steps:');
 console.log('1. Update .env with cloud DATABASE_URL');

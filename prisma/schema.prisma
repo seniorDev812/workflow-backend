@@ -7,105 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                 String              @id @default(cuid())
-  email              String              @unique
-  password           String
-  name               String
-  role               String              @default("USER")
-  isActive           Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  backupCodes        String[]            @default([])
-  lastLoginAt        DateTime?
-  lockedUntil        DateTime?
-  loginAttempts      Int                 @default(0)
-  resetToken         String?
-  resetTokenExpiry   DateTime?
-  twoFactorEnabled   Boolean             @default(false)
-  twoFactorSecret    String?
-  applications       CareerApplication[]
-  contactSubmissions ContactSubmission[]
-  messages           Message[]
-
-  @@index([email])
-  @@index([isActive])
-  @@index([createdAt])
-  @@map("users")
-}
-
-model Category {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  description String?
-  slug        String    @unique
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  products    Product[]
-
-  @@map("categories")
-}
-
-model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  price       Decimal?
-  imageUrl    String?
-  categoryId  String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@map("products")
-}
-
-model Message {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  subject   String?
-  message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-
-  @@index([read])
-  @@index([createdAt])
-  @@index([email])
-  @@map("messages")
-}
-
-model Job {
-  id               String              @id @default(cuid())
-  title            String
-  description      String
-  requirements     String?
-  location         String?
-  type             String              @default("FULL_TIME")
-  isActive         Boolean             @default(true)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  benefits         String[]
-  department       String?
-  postedDate       DateTime?
-  responsibilities String?
-  salary           String?
-  skills           String[]
-  applications     CareerApplication[]
-
-  @@index([isActive])
-  @@index([type])
-  @@index([createdAt])
-  @@index([location])
-  @@map("jobs")
-}
-
-model CareerApplication {
+model career_applications {
   id          String   @id @default(cuid())
   jobId       String
   name        String
@@ -115,41 +17,29 @@ model CareerApplication {
   coverLetter String?
   status      String   @default("PENDING")
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime
   userId      String?
-  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  user        User?    @relation(fields: [userId], references: [id])
+  jobs        jobs     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  users       users?   @relation(fields: [userId], references: [id])
 
-  @@index([status])
   @@index([createdAt])
   @@index([email])
   @@index([jobId])
-  @@map("career_applications")
+  @@index([status])
 }
 
-model Setting {
-  id    String @id @default(cuid())
-  key   String @unique
-  value String
-  type  String @default("string")
-
-  @@map("settings")
+model categories {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  slug        String     @unique
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  products    products[]
 }
 
-model PageView {
-  id        String   @id @default(cuid())
-  path      String
-  ip        String?
-  userAgent String?
-  sessionId String?
-  createdAt DateTime @default(now())
-
-  @@index([path])
-  @@index([createdAt])
-  @@map("page_views")
-}
-
-model ContactSubmission {
+model contact_submissions {
   id             String   @id @default(cuid())
   firstName      String
   lastName       String
@@ -157,20 +47,117 @@ model ContactSubmission {
   country        String
   phone          String
   email          String
-  requirements   Json
-  productContext Json?
+  requirements   String // JSON as string for SQLite
+  productContext String? // JSON as string for SQLite
   status         String   @default("NEW")
   read           Boolean  @default(false)
   notes          String?
   createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  updatedAt      DateTime
   userId         String?
-  user           User?    @relation(fields: [userId], references: [id])
+  users          users?   @relation(fields: [userId], references: [id])
 
-  @@index([status])
-  @@index([read])
+  @@index([country])
   @@index([createdAt])
   @@index([email])
-  @@index([country])
-  @@map("contact_submissions")
+  @@index([read])
+  @@index([status])
+}
+
+model jobs {
+  id                  String                @id @default(cuid())
+  title               String
+  description         String
+  requirements        String?
+  location            String?
+  type                String                @default("FULL_TIME")
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  benefits            String // JSON as string for SQLite
+  department          String?
+  postedDate          DateTime?
+  responsibilities    String?
+  salary              String?
+  skills              String // JSON as string for SQLite
+  career_applications career_applications[]
+
+  @@index([createdAt])
+  @@index([isActive])
+  @@index([location])
+  @@index([type])
+}
+
+model messages {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    String?
+  users     users?   @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([email])
+  @@index([read])
+}
+
+model page_views {
+  id        String   @id @default(cuid())
+  path      String
+  ip        String?
+  userAgent String?
+  sessionId String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([path])
+}
+
+model products {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  price       String? // Decimal as string for SQLite
+  imageUrl    String?
+  categoryId  String
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  categories  categories @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+}
+
+model settings {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  type  String @default("string")
+}
+
+model users {
+  id                  String                @id @default(cuid())
+  email               String                @unique
+  password            String
+  name                String
+  role                String                @default("USER")
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  backupCodes         String // JSON as string for SQLite
+  lastLoginAt         DateTime?
+  lockedUntil         DateTime?
+  loginAttempts       Int                  @default(0)
+  resetToken          String?
+  resetTokenExpiry    DateTime?
+  twoFactorEnabled    Boolean              @default(false)
+  twoFactorSecret     String?
+  career_applications career_applications[]
+  contact_submissions contact_submissions[]
+  messages            messages[]
+
+  @@index([createdAt])
+  @@index([email])
+  @@index([isActive])
 }
