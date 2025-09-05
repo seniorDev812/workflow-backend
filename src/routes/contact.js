@@ -78,7 +78,8 @@ router.post('/', [
         phone,
         email,
         requirements: parsedRequirements,
-        productContext: parsedProductContext
+        productContext: parsedProductContext,
+        updatedAt: new Date()
       }
     });
      
@@ -302,7 +303,8 @@ router.patch('/submissions/:id', protect, authorize('ADMIN'), [
       data: {
         ...(status && { status }),
         ...(read !== undefined && { read }),
-        ...(notes && { notes })
+        ...(notes && { notes }),
+        updatedAt: new Date()
       }
     });
 
