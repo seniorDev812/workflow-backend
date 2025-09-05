@@ -279,7 +279,7 @@ router.delete('/', [
       include: {
         _count: {
           select: {
-            applications: true
+            career_applications: true
           }
         }
       }
@@ -362,7 +362,7 @@ router.get('/analytics', asyncHandler(async (req, res) => {
         take: 10,
         orderBy: { createdAt: 'desc' },
         include: {
-          job: {
+          jobs: {
             select: { title: true }
           }
         }

@@ -81,6 +81,8 @@ model jobs {
   salary              String?
   skills              String // JSON as string for SQLite
   career_applications career_applications[]
+  archivedAt          DateTime?
+  archivedBy          String?
 
   @@index([createdAt])
   @@index([isActive])
@@ -120,7 +122,7 @@ model products {
   id          String     @id @default(cuid())
   name        String
   description String?
-  price       String? // Decimal as string for SQLite
+  price       Decimal?   @db.Decimal(10,2)
   imageUrl    String?
   categoryId  String
   isActive    Boolean    @default(true)
