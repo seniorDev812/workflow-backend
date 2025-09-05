@@ -14,7 +14,7 @@ router.use(authorize('ADMIN'));
 // Get settings
 router.get('/', asyncHandler(async (req, res) => {
   try {
-    const settings = await prisma.Setting.findMany({
+    const settings = await prisma.settings.findMany({
       orderBy: { key: 'asc' }
     });
 
@@ -56,7 +56,7 @@ router.put('/', [
     const updates = [];
     
     for (const [key, value] of Object.entries(settings)) {
-      const update = prisma.Setting.upsert({
+      const update = prisma.settings.upsert({
         where: { key },
         update: { value: String(value) },
         create: { key, value: String(value) }
@@ -87,7 +87,7 @@ router.get('/:key', asyncHandler(async (req, res) => {
   const { key } = req.params;
 
   try {
-    const setting = await prisma.Setting.findUnique({
+    const setting = await prisma.settings.findUnique({
       where: { key }
     });
 
@@ -128,7 +128,7 @@ router.put('/:key', [
   const { value } = req.body;
 
   try {
-    const setting = await prisma.Setting.upsert({
+    const setting = await prisma.settings.upsert({
       where: { key },
       update: { value: String(value) },
       create: { key, value: String(value) }

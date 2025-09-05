@@ -250,14 +250,14 @@ router.get('/dashboard/stats', asyncHandler(async (req, res) => {
       totalApplications,
       pendingApplications
     ] = await Promise.all([
-      prisma.Product.count({ where: { isActive: true } }),
-      prisma.Job.count({ where: { isActive: true } }),
-      prisma.CareerApplication.count(),
-      prisma.CareerApplication.count({ where: { status: 'PENDING' } })
+      prisma.products.count({ where: { isActive: true } }),
+      prisma.jobs.count({ where: { isActive: true } }),
+      prisma.career_applications.count(),
+      prisma.career_applications.count({ where: { status: 'PENDING' } })
     ]);
 
     // Get recent applications with optimized query
-    const recentApplications = await prisma.CareerApplication.findMany({
+    const recentApplications = await prisma.career_applications.findMany({
       take: 5,
       orderBy: { createdAt: 'desc' },
       select: {

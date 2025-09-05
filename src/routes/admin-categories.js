@@ -15,7 +15,7 @@ router.use(authorize('ADMIN'));
 router.get('/', asyncHandler(async (req, res) => {
   try {
     console.log('GET categories request received');
-    const categories = await prisma.Category.findMany({
+    const categories = await prisma.categories.findMany({
       where: { isActive: true },
       include: {
         _count: {
@@ -64,7 +64,7 @@ router.post('/', [
       .replace(/(^-|-$)/g, '');
 
     // Check if category with same name already exists
-    const existingCategory = await prisma.Category.findFirst({
+    const existingCategory = await prisma.categories.findFirst({
       where: {
         OR: [
           { name: { equals: name, mode: 'insensitive' } },
@@ -80,7 +80,7 @@ router.post('/', [
       });
     }
 
-    const category = await prisma.Category.create({
+    const category = await prisma.categories.create({
       data: {
         name,
         slug
@@ -121,7 +121,7 @@ router.patch('/', [
 
   try {
     // Check if category exists
-    const existingCategory = await prisma.Category.findUnique({
+    const existingCategory = await prisma.categories.findUnique({
       where: { id }
     });
 
@@ -138,7 +138,7 @@ router.patch('/', [
       .replace(/(^-|-$)/g, '');
 
     // Check if new name conflicts with existing category
-    const conflictingCategory = await prisma.Category.findFirst({
+    const conflictingCategory = await prisma.categories.findFirst({
       where: {
         OR: [
           { name: { equals: name, mode: 'insensitive' } },
@@ -155,7 +155,7 @@ router.patch('/', [
       });
     }
 
-    const category = await prisma.Category.update({
+    const category = await prisma.categories.update({
       where: { id },
       data: {
         name,
@@ -212,7 +212,7 @@ router.delete('/', [
   }
 
   try {
-    const category = await prisma.Category.findUnique({
+    const category = await prisma.categories.findUnique({
       where: { id },
       include: {
         _count: {
@@ -239,7 +239,7 @@ router.delete('/', [
     }
 
           // Hard delete - completely remove from database
-      await prisma.Category.delete({
+      await prisma.categories.delete({
         where: { id }
       });
 

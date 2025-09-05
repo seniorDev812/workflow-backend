@@ -80,7 +80,7 @@ router.get('/', [
 
     // Get products with pagination
     const [products, total] = await Promise.all([
-      prisma.Product.findMany({
+      prisma.products.findMany({
         where,
         include: {
           category: {
@@ -95,7 +95,7 @@ router.get('/', [
         take: parseInt(limit),
         orderBy: { [sortBy]: sortOrder }
       }),
-      prisma.Product.count({ where })
+      prisma.products.count({ where })
     ]);
 
     const totalPages = Math.ceil(total / parseInt(limit));
@@ -144,7 +144,7 @@ router.post('/', [
 
   try {
     // Check if category exists
-    const category = await prisma.Category.findUnique({
+    const category = await prisma.categories.findUnique({
       where: { id: categoryId }
     });
 
@@ -155,7 +155,7 @@ router.post('/', [
       });
     }
 
-    const product = await prisma.Product.create({
+    const product = await prisma.products.create({
       data: {
         name,
         description,
@@ -216,7 +216,7 @@ router.put('/', [
 
   try {
     // Check if product exists
-    const existingProduct = await prisma.Product.findUnique({
+    const existingProduct = await prisma.products.findUnique({
       where: { id }
     });
 
@@ -229,7 +229,7 @@ router.put('/', [
 
     // Check if category exists if categoryId is provided
     if (categoryId) {
-      const category = await prisma.Category.findUnique({
+      const category = await prisma.categories.findUnique({
         where: { id: categoryId }
       });
 
@@ -248,7 +248,7 @@ router.put('/', [
     if (categoryId !== undefined) updateData.categoryId = categoryId;
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
 
-    const product = await prisma.Product.update({
+    const product = await prisma.products.update({
       where: { id },
       data: updateData,
       include: {
@@ -294,7 +294,7 @@ router.delete('/', [
   const { id } = req.query;
 
   try {
-    const product = await prisma.Product.findUnique({
+    const product = await prisma.products.findUnique({
       where: { id }
     });
 
@@ -306,7 +306,7 @@ router.delete('/', [
     }
 
     // Soft delete - archive the product instead of removing
-    const archivedProduct = await prisma.Product.update({
+    const archivedProduct = await prisma.products.update({
       where: { id },
       data: {
         isActive: false,
@@ -341,26 +341,26 @@ router.get('/analytics', asyncHandler(async (req, res) => {
       recentActivity
     ] = await Promise.all([
       // Total counts
-      prisma.Product.count(),
-      prisma.Product.count({ where: { isActive: true } }),
-      prisma.Product.count({ where: { isActive: false } }),
+      prisma.products.count(),
+      prisma.products.count({ where: { isActive: true } }),
+      prisma.products.count({ where: { isActive: false } }),
       
       // Products by category
-      prisma.Product.groupBy({
+      prisma.products.groupBy({
         by: ['categoryId'],
         where: { isActive: true },
         _count: { categoryId: true }
       }),
       
       // Price range distribution
-      prisma.Product.groupBy({
+      prisma.products.groupBy({
         by: ['price'],
         where: { isActive: true },
         _count: { price: true }
       }),
       
       // Recent activity
-      prisma.Product.findMany({
+      prisma.products.findMany({
         take: 10,
         orderBy: { updatedAt: 'desc' },
         include: {
@@ -373,7 +373,7 @@ router.get('/analytics', asyncHandler(async (req, res) => {
 
     // Get category names for products by category
     const categoryIds = productsByCategory.map(p => p.categoryId);
-    const categories = await prisma.Category.findMany({
+    const categories = await prisma.categories.findMany({
       where: { id: { in: categoryIds } },
       select: { id: true, name: true }
     });
