@@ -176,6 +176,9 @@ router.post('/', [
 
     logger.info(`Job created: ${job.title} by admin: ${req.user.email}`);
 
+    // Invalidate cache when new job is created
+    invalidateJobCache();
+
     // Parse JSON strings back to arrays for response
     const transformedJob = {
       ...job,
@@ -259,6 +262,9 @@ router.put('/', [
     });
 
     logger.info(`Job updated: ${job.title} by admin: ${req.user.email}`);
+
+    // Invalidate cache when job is updated
+    invalidateJobCache();
 
     // Parse JSON strings back to arrays for response
     const transformedJob = {
