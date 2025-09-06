@@ -33,7 +33,9 @@ router.get('/', [
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } }
+          { description: { contains: search, mode: 'insensitive' } },
+          { oemNumber: { contains: search, mode: 'insensitive' } },
+          { manufacturer: { contains: search, mode: 'insensitive' } }
         ]
       }),
       ...(categoryId && { categoryId })
@@ -135,7 +137,9 @@ router.get('/filter', async (req, res) => {
     if (search) {
       whereClause.OR = [
         { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
+        { description: { contains: search, mode: 'insensitive' } },
+        { oemNumber: { contains: search, mode: 'insensitive' } },
+        { manufacturer: { contains: search, mode: 'insensitive' } }
       ];
     }
 
