@@ -163,7 +163,7 @@ router.get('/submissions', protect, authorize('ADMIN'), asyncHandler(async (req,
     };
 
     // Get submissions with pagination
-    const [submissions, total] = await Promise.all([
+    const [submissionsRaw, total] = await Promise.all([
       prisma.contact_submissions.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -179,8 +179,21 @@ router.get('/submissions', protect, authorize('ADMIN'), asyncHandler(async (req,
           }
         }
       }),
-              prisma.contact_submissions.count({ where })
+      prisma.contact_submissions.count({ where })
     ]);
+
+    // Parse JSON string fields so the frontend can iterate safely
+    const submissions = submissionsRaw.map((s) => {
+      let requirements = s.requirements;
+      let productContext = s.productContext;
+      try {
+        if (typeof requirements === 'string') requirements = JSON.parse(requirements);
+      } catch {}
+      try {
+        if (typeof productContext === 'string') productContext = JSON.parse(productContext);
+      } catch {}
+      return { ...s, requirements, productContext };
+    });
 
     res.json({
       success: true,
@@ -277,7 +290,7 @@ router.get('/submissions/:id', protect, authorize('ADMIN'), asyncHandler(async (
   try {
     const { id } = req.params;
     
-    const submission = await prisma.contact_submissions.findUnique({
+    const submissionRaw = await prisma.contact_submissions.findUnique({
       where: { id },
       include: {
         users: {
@@ -290,12 +303,23 @@ router.get('/submissions/:id', protect, authorize('ADMIN'), asyncHandler(async (
       }
     });
 
-    if (!submission) {
+    if (!submissionRaw) {
       return res.status(404).json({
         success: false,
         error: 'Contact submission not found'
       });
     }
+
+    // Normalize JSON fields for frontend usage
+    let requirements = submissionRaw.requirements;
+    let productContext = submissionRaw.productContext;
+    try {
+      if (typeof requirements === 'string') requirements = JSON.parse(requirements);
+    } catch {}
+    try {
+      if (typeof productContext === 'string') productContext = JSON.parse(productContext);
+    } catch {}
+    const submission = { ...submissionRaw, requirements: requirements || [], productContext: productContext || null };
 
     res.json({
       success: true,
