@@ -478,7 +478,7 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
   }
 }));
 
-// Download resume file (Public route for testing)
+// Download resume file (Redirect to R2 URL)
 router.get('/applications/:id/resume', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -506,13 +506,19 @@ router.get('/applications/:id/resume', asyncHandler(async (req, res) => {
       });
     }
 
-    // Construct the full file path
+    // If resumeUrl is already a full URL (R2), redirect to it
+    if (application.resumeUrl.startsWith('http')) {
+      logger.info(`Redirecting to R2 URL: ${application.resumeUrl}`);
+      return res.redirect(application.resumeUrl);
+    }
+
+    // Legacy support: if it's a local path, try to serve it (for old uploads)
     const filePath = path.join(__dirname, '../../uploads/resumes/', path.basename(application.resumeUrl));
-    logger.info(`Attempting to download file: ${filePath}`);
+    logger.info(`Attempting to download legacy file: ${filePath}`);
     
     // Check if file exists
     if (!fs.existsSync(filePath)) {
-      logger.error(`File not found on server: ${filePath}`);
+      logger.error(`Legacy file not found on server: ${filePath}`);
       return res.status(404).json({
         success: false,
         error: 'Resume file not found on server'
@@ -523,7 +529,7 @@ router.get('/applications/:id/resume', asyncHandler(async (req, res) => {
     const stats = fs.statSync(filePath);
     const fileName = path.basename(application.resumeUrl);
     
-    logger.info(`Serving file: ${fileName}, size: ${stats.size} bytes`);
+    logger.info(`Serving legacy file: ${fileName}, size: ${stats.size} bytes`);
     
     // Set headers for file download
     res.setHeader('Content-Type', 'application/octet-stream');
