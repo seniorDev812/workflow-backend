@@ -171,6 +171,7 @@ router.get('/filter', async (req, res) => {
     // Transform data to match frontend expectations
     const transformedProducts = products.map(product => ({
       id: product.id,
+      name: product.name,
       oemNumber: product.oemNumber, // Using name as OEM number
       manufacturer: product.manufacturer, // Using category as manufacturer
       description: product.description,
