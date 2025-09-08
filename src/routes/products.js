@@ -174,8 +174,8 @@ router.get('/filter', async (req, res) => {
       oemNumber: product.oemNumber, // Using name as OEM number
       manufacturer: product.manufacturer, // Using category as manufacturer
       description: product.description,
-      category: product.category.name,
-      subcategory: product.subcategory.name,
+      category: product.category,
+      subcategory: product.subcategory,
       image: product.imageUrl,
       price: product.price,
       isActive: product.isActive,
