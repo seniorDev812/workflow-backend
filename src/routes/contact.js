@@ -17,8 +17,9 @@ router.post('/', [
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('contactReason').trim().notEmpty().withMessage('Contact reason is required'),
   body('message').optional().trim(),
-  body('requirements').optional().isJSON().withMessage('Requirements must be valid JSON'),
-  body('productContext').optional().isJSON().withMessage('Product context must be valid JSON'),
+  // Accept either a JSON string or an object/array for requirements and productContext
+  body('requirements').optional(),
+  body('productContext').optional(),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -50,7 +51,14 @@ router.post('/', [
     // Only parse requirements if contact reason is sales
     if (contactReason === 'sales' && requirements) {
       try {
-        parsedRequirements = JSON.parse(requirements);
+        if (typeof requirements === 'string') {
+          parsedRequirements = JSON.parse(requirements);
+        } else if (Array.isArray(requirements)) {
+          parsedRequirements = requirements;
+        } else if (typeof requirements === 'object') {
+          // single object -> wrap as array
+          parsedRequirements = [requirements];
+        }
       } catch (error) {
         return res.status(400).json({
           success: false,
@@ -77,7 +85,11 @@ router.post('/', [
 
     if (productContext) {
       try {
-        parsedProductContext = JSON.parse(productContext);
+        if (typeof productContext === 'string') {
+          parsedProductContext = JSON.parse(productContext);
+        } else if (typeof productContext === 'object') {
+          parsedProductContext = productContext;
+        }
       } catch (error) {
         logger.warn('Invalid product context format:', error);
       }
@@ -94,8 +106,9 @@ router.post('/', [
         email,
         contactReason,
         message: message || null,
-        requirements: parsedRequirements.length > 0 ? parsedRequirements : null,
-        productContext: parsedProductContext,
+        // DB columns are String/Nullable → stringify complex payloads
+        requirements: parsedRequirements.length > 0 ? JSON.stringify(parsedRequirements) : null,
+        productContext: parsedProductContext ? JSON.stringify(parsedProductContext) : null,
         updatedAt: new Date()
       }
     });
