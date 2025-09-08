@@ -86,4 +86,4 @@ export const handleUploadError = (error, req, res, next) => {
   next(error);
 };
 
-export default upload;
+export default imageUpload;
