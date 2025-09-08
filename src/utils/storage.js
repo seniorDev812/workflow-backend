@@ -28,13 +28,22 @@ export async function uploadBufferToS3(params) {
 
   const contentType = mimetype || (lookupMime(originalName || '') || 'application/octet-stream');
 
-  await s3Client.send(new PutObjectCommand({
+  const putObjectParams = {
     Bucket: bucketName,
     Key: key,
     Body: buffer,
-    ContentType: contentType,
-    ACL: process.env.S3_OBJECT_ACL || 'public-read'
-  }));
+    ContentType: contentType
+  };
+
+  // R2 does not support ACLs; only include ACL for providers that need/allow it
+  const endpointHost = String(process.env.S3_ENDPOINT || '').toLowerCase();
+  const isR2 = endpointHost.includes('r2.cloudflarestorage.com');
+  const desiredAcl = process.env.S3_OBJECT_ACL || 'public-read';
+  if (!isR2 && desiredAcl && desiredAcl !== 'none') {
+    putObjectParams.ACL = desiredAcl;
+  }
+
+  await s3Client.send(new PutObjectCommand(putObjectParams));
 
   // Build public URL
   if (process.env.S3_PUBLIC_BASE_URL) {
