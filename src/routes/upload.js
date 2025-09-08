@@ -3,6 +3,7 @@ import { protect, authorize } from '../middleware/auth.js';
 import { uploadSingle, handleUploadError } from '../middleware/upload.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
+import { uploadBufferToS3 } from '../utils/storage.js';
 
 const router = express.Router();
 
@@ -20,20 +21,25 @@ router.post('/image', uploadSingle, handleUploadError, asyncHandler(async (req, 
       });
     }
 
-    // Generate the URL for the uploaded file
-    const baseUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
-    const imageUrl = `${baseUrl}/uploads/${req.file.filename}`;
+    // Upload the in-memory buffer to S3-compatible storage
+    const { buffer, originalname, mimetype, size } = req.file;
+    const uploadResult = await uploadBufferToS3({
+      buffer,
+      originalName: originalname,
+      mimetype,
+      prefix: 'product-images'
+    });
 
-    logger.info(`Image uploaded: ${req.file.filename} by admin: ${req.user.email}`);
+    logger.info(`Image uploaded to S3: ${uploadResult.key} by admin: ${req.user.email}`);
 
     res.status(200).json({
       success: true,
       data: {
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
-        url: imageUrl
+        key: uploadResult.key,
+        originalName: originalname,
+        size,
+        mimetype,
+        url: uploadResult.url
       },
       message: 'Image uploaded successfully'
     });
