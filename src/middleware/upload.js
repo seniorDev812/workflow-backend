@@ -8,8 +8,8 @@ const __dirname = dirname(__filename);
 // Configure storage: use memory to forward to S3-compatible storage
 const storage = multer.memoryStorage();
 
-// File filter
-const fileFilter = (req, file, cb) => {
+// File filter for images
+const imageFileFilter = (req, file, cb) => {
   // Allow only images
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
@@ -18,20 +18,42 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Configure multer
-const upload = multer({
+// File filter for documents (PDFs)
+const documentFileFilter = (req, file, cb) => {
+  // Allow images and PDFs
+  if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image and PDF files are allowed!'), false);
+  }
+};
+
+// Configure multer for images
+const imageUpload = multer({
   storage: storage,
-  fileFilter: fileFilter,
+  fileFilter: imageFileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   }
 });
 
-// Single file upload middleware
-export const uploadSingle = upload.single('image');
+// Configure multer for documents (images + PDFs)
+const documentUpload = multer({
+  storage: storage,
+  fileFilter: documentFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit for documents
+  }
+});
+
+// Single file upload middleware for images
+export const uploadSingle = imageUpload.single('image');
+
+// Single file upload middleware for documents
+export const uploadDocument = documentUpload.single('document');
 
 // Multiple files upload middleware
-export const uploadMultiple = upload.array('images', 5); // Max 5 images
+export const uploadMultiple = imageUpload.array('images', 5); // Max 5 images
 
 // Error handling middleware
 export const handleUploadError = (error, req, res, next) => {
@@ -54,10 +76,10 @@ export const handleUploadError = (error, req, res, next) => {
     });
   }
   
-  if (error.message === 'Only image files are allowed!') {
+  if (error.message === 'Only image files are allowed!' || error.message === 'Only image and PDF files are allowed!') {
     return res.status(400).json({
       success: false,
-      error: 'Only image files are allowed!'
+      error: error.message
     });
   }
   
