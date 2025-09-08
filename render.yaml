@@ -3,7 +3,7 @@ services:
     name: seengroup-backend
     env: node
     plan: starter
-    buildCommand: npm install && npx prisma generate
+    buildCommand: npm ci --omit=dev && npx prisma generate
     startCommand: npm run start
     envVars:
       - key: NODE_ENV
