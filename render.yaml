@@ -20,13 +20,17 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
-      - key: SMTP_HOST
+      - key: EMAIL_HOST
         sync: false
-      - key: SMTP_PORT
+      - key: EMAIL_PORT
         sync: false
-      - key: SMTP_USER
+      - key: EMAIL_USER
         sync: false
-      - key: SMTP_PASS
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_TO
         sync: false
       - key: S3_REGION
         sync: false

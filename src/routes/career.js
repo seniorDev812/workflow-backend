@@ -5,6 +5,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import prisma from '../config/database.js';
 import { logger } from '../utils/logger.js';
 import { uploadResume, handleResumeUploadError } from '../middleware/resumeUpload.js';
+import { sendJobApplicationNotification, sendApplicationConfirmation } from '../utils/emailService.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -249,6 +250,8 @@ router.post('/apply', [
 
     logger.info(`New job application received for: ${job.title} from: ${email}`);
 
+   
+
     // Invalidate cache when new application is submitted
     invalidateJobCache();
 
@@ -457,6 +460,7 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
 
     logger.info(`New job application received from: ${email} for position: ${job?.title || position}`);
 
+   
     res.status(201).json({
       success: true,
       message: 'Application submitted successfully',
