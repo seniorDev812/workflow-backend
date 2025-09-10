@@ -5,7 +5,6 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import prisma from '../config/database.js';
 import { logger } from '../utils/logger.js';
 import { uploadResume, handleResumeUploadError } from '../middleware/resumeUpload.js';
-import { sendJobApplicationNotification, sendApplicationConfirmation } from '../utils/emailService.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
