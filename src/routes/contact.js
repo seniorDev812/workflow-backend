@@ -4,11 +4,13 @@ import { protect, authorize } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import prisma from '../config/database.js';
+import { contactRateLimiter } from '../middleware/rateLimiters.js';
+import { optionalCaptcha } from '../middleware/captcha.js';
 
 const router = express.Router();
 
 // Submit contact form with product requirements
-router.post('/', [
+router.post('/', contactRateLimiter, optionalCaptcha, [
   body('firstName').trim().notEmpty().withMessage('First name is required'),
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
   body('company').trim().notEmpty().withMessage('Company name is required'),
