@@ -20,7 +20,7 @@ const getEmailConfig = () => ({
   companyName: process.env.COMPANY_NAME || 'Seen Group',
   contactEmail: process.env.CONTACT_EMAIL || 'info@seengrp.com',
   adminEmail: process.env.ADMIN_EMAIL || 'admin@seengrp.com',
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
+  frontendUrl: process.env.FRONTEND_URL || 'https://workflow-seengroup.vercel.app/'
 });
 
 // Email templates
