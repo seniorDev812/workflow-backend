@@ -18,8 +18,8 @@ const getResend = () => {
 // Email configuration
 const getEmailConfig = () => ({
   companyName: process.env.COMPANY_NAME || 'Seen Group',
-  contactEmail: process.env.CONTACT_EMAIL || 'info@seengrp.com',
-  adminEmail: process.env.ADMIN_EMAIL || 'admin@seengrp.com',
+  contactEmail: process.env.CONTACT_EMAIL || 'zakharovmaksym00@gmail.com',
+  adminEmail: process.env.ADMIN_EMAIL || 'zakharovmaksym00@gmail.com',
   frontendUrl: process.env.FRONTEND_URL || 'https://workflow-seengroup.vercel.app/'
 });
 
@@ -209,8 +209,13 @@ export const sendEmail = async (to, subject, html, text) => {
   try {
     const resendClient = getResend();
 
+    // Use verified domain for development, or configured domain for production
+    const fromEmail = process.env.NODE_ENV === 'development' 
+      ? 'onboarding@resend.dev'  // Always use verified domain in development
+      : (process.env.FROM_EMAIL || 'onboarding@resend.dev');  // Use configured email in production
+    
     const { data, error } = await resendClient.emails.send({
-      from: `${process.env.COMPANY_NAME || 'Seen Group'} <${process.env.FROM_EMAIL || 'onboarding@resend.dev'}>`,
+      from: `${process.env.COMPANY_NAME || 'Seen Group'} <${fromEmail}>`,
       to: [to],
       subject: subject,
       html: html,
@@ -221,10 +226,10 @@ export const sendEmail = async (to, subject, html, text) => {
       logger.error('Resend email error:', error);
       
       // Handle Resend domain verification error gracefully
-      if (error.message && error.message.includes('verify a domain')) {
+      if (error.message && (error.message.includes('verify a domain') || error.message.includes('domain is not verified'))) {
         return { 
           success: false, 
-          error: 'Email service requires domain verification. Please verify your domain in Resend dashboard.',
+          error: `Email service requires domain verification. Please verify your domain (${fromEmail.split('@')[1]}) in Resend dashboard at https://resend.com/domains`,
           code: 'DOMAIN_VERIFICATION_REQUIRED'
         };
       }
