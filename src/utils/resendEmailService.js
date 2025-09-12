@@ -240,10 +240,9 @@ export const sendApplicationConfirmation = async (applicationData) => {
 
   const template = emailTemplates.userConfirmation(applicationData);
   
-  // Use verified email in development (Resend restriction), actual email in production
-  const recipientEmail = process.env.NODE_ENV === 'development' 
-    ? 'zakharovmaksym00@gmail.com' // Verified email for Resend testing
-    : applicationData.email;
+  // In development, send to actual applicant email (Resend allows this for user confirmations)
+  // In production, send to actual applicant email
+  const recipientEmail = applicationData.email;
   
   // Add test prefix only in development
   const subject = process.env.NODE_ENV === 'development' 
@@ -278,10 +277,8 @@ export const sendAdminNotification = async (applicationData) => {
 
   const template = emailTemplates.adminNotification(applicationData);
   
-  // Use verified email in development (Resend restriction), admin email in production
-  const recipientEmail = process.env.NODE_ENV === 'development' 
-    ? 'zakharovmaksym00@gmail.com' // Verified email for Resend testing
-    : process.env.ADMIN_EMAIL;
+  // Send admin notification to admin email (both development and production)
+  const recipientEmail = process.env.ADMIN_EMAIL;
   
   // Add admin prefix only in development
   const subject = process.env.NODE_ENV === 'development' 

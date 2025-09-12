@@ -80,7 +80,7 @@ router.post('/document', uploadDocument, handleUploadError, asyncHandler(async (
         originalName: originalname,
         size,
         mimetype,
-        url: uploadResult.url
+        url: uploadResult.url  
       },
       message: 'Document uploaded successfully'
     });
