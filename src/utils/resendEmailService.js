@@ -214,8 +214,16 @@ export const sendEmail = async (to, subject, html, text) => {
       ? 'onboarding@resend.dev'  // Always use verified domain in development
       : (process.env.FROM_EMAIL || 'onboarding@resend.dev');  // Use configured email in production
     
-    // In development, do not redirect emails globally; send to intended recipient.
-    const actualRecipient = to;
+    // If RESEND_FORCE_TO is set (e.g., testing without verified domain), route all emails there.
+    const forcedRecipient = process.env.RESEND_FORCE_TO && process.env.RESEND_FORCE_TO.trim();
+    let actualRecipient = forcedRecipient || to;
+    if (forcedRecipient && forcedRecipient !== to) {
+      // Modify content to indicate original recipient
+      try {
+        html = html.replace(/Hello [^,]+/, (match) => `${match} (Original: ${to})`);
+        text = text.replace(/Hello [^,]+/, (match) => `${match} (Original: ${to})`);
+      } catch {}
+    }
     
     const { data, error } = await resendClient.emails.send({
       from: `${process.env.COMPANY_NAME || 'Seen Group'} <${fromEmail}>`,
