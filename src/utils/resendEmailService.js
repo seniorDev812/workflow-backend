@@ -219,6 +219,16 @@ export const sendEmail = async (to, subject, html, text) => {
 
     if (error) {
       logger.error('Resend email error:', error);
+      
+      // Handle Resend domain verification error gracefully
+      if (error.message && error.message.includes('verify a domain')) {
+        return { 
+          success: false, 
+          error: 'Email service requires domain verification. Please verify your domain in Resend dashboard.',
+          code: 'DOMAIN_VERIFICATION_REQUIRED'
+        };
+      }
+      
       return { success: false, error: error.message };
     }
 
@@ -240,20 +250,22 @@ export const sendApplicationConfirmation = async (applicationData) => {
 
   const template = emailTemplates.userConfirmation(applicationData);
   
-  // In development, send to actual applicant email (Resend allows this for user confirmations)
+  // Handle Resend restrictions: in development, send to verified email if not the account owner
   // In production, send to actual applicant email
-  const recipientEmail = applicationData.email;
+  const recipientEmail = process.env.NODE_ENV === 'development' 
+    ? (applicationData.email === 'zakharovmaksym00@gmail.com' ? applicationData.email : 'zakharovmaksym00@gmail.com')
+    : applicationData.email;
   
   // Add test prefix only in development
   const subject = process.env.NODE_ENV === 'development' 
     ? `[TEST] ${template.subject}`
     : template.subject;
   
-  // Modify content only in development
+  // Modify content only in development when redirecting emails
   let html = template.html;
   let text = template.text;
   
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development' && recipientEmail !== applicationData.email) {
     html = html.replace('Hello ' + applicationData.name, `Hello ${applicationData.name} (Original: ${applicationData.email})`);
     text = text.replace('Hello ' + applicationData.name, `Hello ${applicationData.name} (Original: ${applicationData.email})`);
   }
@@ -277,8 +289,11 @@ export const sendAdminNotification = async (applicationData) => {
 
   const template = emailTemplates.adminNotification(applicationData);
   
-  // Send admin notification to admin email (both development and production)
-  const recipientEmail = process.env.ADMIN_EMAIL;
+  // Handle Resend restrictions: in development, send to verified email if admin email is not verified
+  // In production, send to admin email
+  const recipientEmail = process.env.NODE_ENV === 'development' 
+    ? (process.env.ADMIN_EMAIL === 'zakharovmaksym00@gmail.com' ? process.env.ADMIN_EMAIL : 'zakharovmaksym00@gmail.com')
+    : process.env.ADMIN_EMAIL;
   
   // Add admin prefix only in development
   const subject = process.env.NODE_ENV === 'development' 
