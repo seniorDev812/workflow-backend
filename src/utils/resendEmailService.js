@@ -18,8 +18,8 @@ const getResend = () => {
 // Email configuration
 const getEmailConfig = () => ({
   companyName: process.env.COMPANY_NAME || 'Seen Group',
-  contactEmail: process.env.CONTACT_EMAIL || 'zakharovmaksym00@gmail.com',
-  adminEmail: process.env.ADMIN_EMAIL || 'zakharovmaksym00@gmail.com',
+  contactEmail: process.env.CONTACT_EMAIL || 'info@seengrp.com',
+  adminEmail: process.env.ADMIN_EMAIL || 'info@seengrp.com',
   frontendUrl: process.env.FRONTEND_URL || 'https://workflow-seengroup.vercel.app/'
 });
 
@@ -216,8 +216,8 @@ export const sendEmail = async (to, subject, html, text) => {
     
     // In development, redirect unverified emails to verified email
     let actualRecipient = to;
-    if (process.env.NODE_ENV === 'development' && to !== 'zakharovmaksym00@gmail.com') {
-      actualRecipient = 'zakharovmaksym00@gmail.com';
+    if (process.env.NODE_ENV === 'development' && to !== 'info@seengrp.com') {
+      actualRecipient = 'info@seengrp.com';
       // Modify content to show original recipient
       html = html.replace(/Hello [^,]+/, `Hello ${to.split('@')[0]} (Original: ${to})`);
       text = text.replace(/Hello [^,]+/, `Hello ${to.split('@')[0]} (Original: ${to})`);
