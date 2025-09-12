@@ -6,6 +6,7 @@ import prisma from '../config/database.js';
 import { logger } from '../utils/logger.js';
 import { uploadResume, handleResumeUploadError } from '../middleware/resumeUpload.js';
 import { sendApplicationConfirmation, sendAdminNotification } from '../utils/resendEmailService.js';
+import { uploadBufferToS3 } from '../utils/storage.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -315,7 +316,7 @@ router.post('/apply', [
 }));
 
 // Submit resume application (General resume submission) - Public route
-router.post('/resume-submission', [
+router.post('/resume-submission', uploadResume, handleResumeUploadError, [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('phone').optional().isString().withMessage('Phone must be a string'),
@@ -332,7 +333,27 @@ router.post('/resume-submission', [
   }
 
   const { name, email, phone, position, message } = req.body;
-  const resumeUrl = req.file ? `/uploads/${req.file.filename}` : null;
+  
+  // Handle resume upload to S3 if file is provided
+  let resumeUrl = null;
+  if (req.file) {
+    try {
+      const { buffer, originalname, mimetype } = req.file;
+      const uploadResult = await uploadBufferToS3({
+        buffer,
+        originalName: originalname,
+        mimetype,
+        prefix: 'resumes'
+      });
+      resumeUrl = uploadResult.url;
+    } catch (uploadError) {
+      logger.error('Resume upload error:', uploadError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to upload resume file'
+      });
+    }
+  }
 
   try {
     // Find or create a general job entry for applications without specific job
@@ -462,8 +483,17 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
       });
     }
 
-    // Create resume URL
-    const resumeUrl = `/uploads/resumes/${resumeFile.filename}`;
+    // Upload resume to S3-compatible storage
+    const { buffer, originalname, mimetype, size } = resumeFile;
+    const uploadResult = await uploadBufferToS3({
+      buffer,
+      originalName: originalname,
+      mimetype,
+      prefix: 'resumes'
+    });
+
+    // Use S3 URL for resume
+    const resumeUrl = uploadResult.url;
 
     let targetJobId;
 
@@ -627,9 +657,9 @@ router.get('/applications/:id/resume', asyncHandler(async (req, res) => {
       });
     }
 
-    // If resumeUrl is already a full URL (R2), redirect to it
+    // If resumeUrl is a full URL (S3/R2), redirect to it
     if (application.resumeUrl.startsWith('http')) {
-      logger.info(`Redirecting to R2 URL: ${application.resumeUrl}`);
+      logger.info(`Redirecting to S3 URL: ${application.resumeUrl}`);
       return res.redirect(application.resumeUrl);
     }
 
@@ -642,7 +672,7 @@ router.get('/applications/:id/resume', asyncHandler(async (req, res) => {
       logger.error(`Legacy file not found on server: ${filePath}`);
       return res.status(404).json({
         success: false,
-        error: 'Resume file not found on server'
+        error: 'Resume file not found on server. This may be an old upload that was not migrated to cloud storage.'
       });
     }
 

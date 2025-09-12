@@ -1,31 +1,7 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Configure storage for resumes
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dest = path.join(__dirname, '../../uploads/resumes/');
-    try {
-      if (!fs.existsSync(dest)) {
-        fs.mkdirSync(dest, { recursive: true });
-      }
-    } catch (err) {
-      return cb(err);
-    }
-    cb(null, dest);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename with timestamp
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'resume-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Configure storage: use memory to forward to S3-compatible storage
+const storage = multer.memoryStorage();
 
 // File filter for resumes
 const fileFilter = (req, file, cb) => {
@@ -36,10 +12,7 @@ const fileFilter = (req, file, cb) => {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ];
   
-  const allowedExtensions = ['.pdf', '.doc', '.docx'];
-  const fileExtension = path.extname(file.originalname).toLowerCase();
-  
-  if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
+  if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error('Only PDF, DOC, and DOCX files are allowed for resumes!'), false);
