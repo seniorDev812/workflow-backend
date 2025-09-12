@@ -21,7 +21,7 @@ services:
       - key: CONTACT_EMAIL
         sync: false
       - key: FROM_EMAIL
-        sync: false
+        value: onboarding@resend.dev
       - key: TEST_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
