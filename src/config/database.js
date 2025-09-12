@@ -39,7 +39,7 @@ function initializePrisma() {
 // Create default admin function
 const createDefaultAdmin = async () => {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@seengroup.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'cassinarourke@gmail.com';
     
     // Get the initialized Prisma client
     const prismaClient = initializePrisma();

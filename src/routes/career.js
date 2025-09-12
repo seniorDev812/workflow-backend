@@ -5,6 +5,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import prisma from '../config/database.js';
 import { logger } from '../utils/logger.js';
 import { uploadResume, handleResumeUploadError } from '../middleware/resumeUpload.js';
+import { sendApplicationConfirmation, sendAdminNotification } from '../utils/resendEmailService.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -249,7 +250,45 @@ router.post('/apply', [
 
     logger.info(`New job application received for: ${job.title} from: ${email}`);
 
-   
+    // Send email notifications
+    try {
+      // Prepare email data
+      const emailData = {
+        name: application.name,
+        email: application.email,
+        phone: application.phone,
+        jobTitle: application.job.title,
+        applicationId: application.id,
+        resumeUrl: application.resumeUrl,
+        coverLetter: application.coverLetter
+      };
+
+      // Send confirmation email to user (don't wait for it)
+      sendApplicationConfirmation(emailData).then(result => {
+        if (result.success) {
+          logger.info(`Confirmation email sent to ${email}`);
+        } else {
+          logger.error(`Failed to send confirmation email to ${email}:`, result.error);
+        }
+      }).catch(error => {
+        logger.error(`Error sending confirmation email to ${email}:`, error);
+      });
+
+      // Send notification email to admin (don't wait for it)
+      sendAdminNotification(emailData).then(result => {
+        if (result.success) {
+          logger.info(`Admin notification sent for application ${application.id}`);
+        } else {
+          logger.error(`Failed to send admin notification for application ${application.id}:`, result.error);
+        }
+      }).catch(error => {
+        logger.error(`Error sending admin notification for application ${application.id}:`, error);
+      });
+
+    } catch (emailError) {
+      // Log email errors but don't fail the application submission
+      logger.error('Email notification error:', emailError);
+    }
 
     // Invalidate cache when new application is submitted
     invalidateJobCache();
@@ -332,6 +371,46 @@ router.post('/resume-submission', [
     });
 
     logger.info(`General resume submission received from: ${email}`);
+
+    // Send email notifications
+    try {
+      // Prepare email data
+      const emailData = {
+        name: application.name,
+        email: application.email,
+        phone: application.phone,
+        jobTitle: jobTitle,
+        applicationId: application.id,
+        resumeUrl: application.resumeUrl,
+        coverLetter: application.coverLetter
+      };
+
+      // Send confirmation email to user (don't wait for it)
+      sendApplicationConfirmation(emailData).then(result => {
+        if (result.success) {
+          logger.info(`Confirmation email sent to ${email}`);
+        } else {
+          logger.error(`Failed to send confirmation email to ${email}:`, result.error);
+        }
+      }).catch(error => {
+        logger.error(`Error sending confirmation email to ${email}:`, error);
+      });
+
+      // Send notification email to admin (don't wait for it)
+      sendAdminNotification(emailData).then(result => {
+        if (result.success) {
+          logger.info(`Admin notification sent for general application ${application.id}`);
+        } else {
+          logger.error(`Failed to send admin notification for general application ${application.id}:`, result.error);
+        }
+      }).catch(error => {
+        logger.error(`Error sending admin notification for general application ${application.id}:`, error);
+      });
+
+    } catch (emailError) {
+      // Log email errors but don't fail the application submission
+      logger.error('Email notification error:', emailError);
+    }
 
     res.status(201).json({
       success: true,
@@ -459,7 +538,46 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
 
     logger.info(`New job application received from: ${email} for position: ${job?.title || position}`);
 
-   
+    // Send email notifications
+    try {
+      // Prepare email data
+      const emailData = {
+        name: application.name,
+        email: application.email,
+        phone: application.phone,
+        jobTitle: job?.title || 'General Application',
+        applicationId: application.id,
+        resumeUrl: application.resumeUrl,
+        coverLetter: application.coverLetter
+      };
+
+      // Send confirmation email to user (don't wait for it)
+      sendApplicationConfirmation(emailData).then(result => {
+        if (result.success) {
+          logger.info(`Confirmation email sent to ${email}`);
+        } else {
+          logger.error(`Failed to send confirmation email to ${email}:`, result.error);
+        }
+      }).catch(error => {
+        logger.error(`Error sending confirmation email to ${email}:`, error);
+      });
+
+      // Send notification email to admin (don't wait for it)
+      sendAdminNotification(emailData).then(result => {
+        if (result.success) {
+          logger.info(`Admin notification sent for application ${application.id}`);
+        } else {
+          logger.error(`Failed to send admin notification for application ${application.id}:`, result.error);
+        }
+      }).catch(error => {
+        logger.error(`Error sending admin notification for application ${application.id}:`, error);
+      });
+
+    } catch (emailError) {
+      // Log email errors but don't fail the application submission
+      logger.error('Email notification error:', emailError);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Application submitted successfully',
@@ -619,6 +737,7 @@ router.patch('/applications/bulk', protect, authorize('ADMIN'), asyncHandler(asy
     });
   }
 }));
+
 
 // Protected routes - Admin only
 router.use(protect);

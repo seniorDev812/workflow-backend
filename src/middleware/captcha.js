@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+// Using native fetch (Node.js 18+)
 
 // Optional CAPTCHA verification middleware
 // Supports Google reCAPTCHA v2/v3 or Cloudflare Turnstile style endpoints via env config

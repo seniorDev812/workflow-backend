@@ -16,17 +16,19 @@ services:
         sync: false
       - key: ADMIN_EMAIL
         sync: false
+      - key: COMPANY_NAME
+        sync: false
+      - key: CONTACT_EMAIL
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
+      - key: TEST_EMAIL
+        sync: false
       - key: ADMIN_PASSWORD
         sync: false
       - key: CORS_ORIGIN
         sync: false
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
+      - key: RESEND_API_KEY
         sync: false
       - key: S3_REGION
         sync: false
