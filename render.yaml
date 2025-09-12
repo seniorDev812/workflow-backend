@@ -15,7 +15,7 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: ADMIN_EMAIL
-        value: cassianrourke@gmail.com
+        sync: false
       - key: COMPANY_NAME
         sync: false
       - key: CONTACT_EMAIL
