@@ -264,16 +264,18 @@ router.post('/apply', [
         coverLetter: application.coverLetter
       };
 
-      // Send confirmation email to user (don't wait for it)
-      sendApplicationConfirmation(emailData).then(result => {
-        if (result.success) {
-          logger.info(`Confirmation email sent to ${email}`);
-        } else {
-          logger.error(`Failed to send confirmation email to ${email}:`, result.error);
-        }
-      }).catch(error => {
-        logger.error(`Error sending confirmation email to ${email}:`, error);
-      });
+      // Optionally send confirmation email to user (controlled by SEND_USER_CONFIRMATION)
+      if (process.env.SEND_USER_CONFIRMATION === 'true') {
+        sendApplicationConfirmation(emailData).then(result => {
+          if (result.success) {
+            logger.info(`Confirmation email sent to ${email}`);
+          } else {
+            logger.error(`Failed to send confirmation email to ${email}:`, result.error);
+          }
+        }).catch(error => {
+          logger.error(`Error sending confirmation email to ${email}:`, error);
+        });
+      }
 
       // Send notification email to admin (don't wait for it)
       sendAdminNotification(emailData).then(result => {
@@ -406,16 +408,18 @@ router.post('/resume-submission', uploadResume, handleResumeUploadError, [
         coverLetter: application.coverLetter
       };
 
-      // Send confirmation email to user (don't wait for it)
-      sendApplicationConfirmation(emailData).then(result => {
-        if (result.success) {
-          logger.info(`Confirmation email sent to ${email}`);
-        } else {
-          logger.error(`Failed to send confirmation email to ${email}:`, result.error);
-        }
-      }).catch(error => {
-        logger.error(`Error sending confirmation email to ${email}:`, error);
-      });
+      // Optionally send confirmation email to user (controlled by SEND_USER_CONFIRMATION)
+      if (process.env.SEND_USER_CONFIRMATION === 'true') {
+        sendApplicationConfirmation(emailData).then(result => {
+          if (result.success) {
+            logger.info(`Confirmation email sent to ${email}`);
+          } else {
+            logger.error(`Failed to send confirmation email to ${email}:`, result.error);
+          }
+        }).catch(error => {
+          logger.error(`Error sending confirmation email to ${email}:`, error);
+        });
+      }
 
       // Send notification email to admin (don't wait for it)
       sendAdminNotification(emailData).then(result => {
@@ -581,16 +585,18 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
         coverLetter: application.coverLetter
       };
 
-      // Send confirmation email to user (don't wait for it)
-      sendApplicationConfirmation(emailData).then(result => {
-        if (result.success) {
-          logger.info(`Confirmation email sent to ${email}`);
-        } else {
-          logger.error(`Failed to send confirmation email to ${email}:`, result.error);
-        }
-      }).catch(error => {
-        logger.error(`Error sending confirmation email to ${email}:`, error);
-      });
+      // Optionally send confirmation email to user (controlled by SEND_USER_CONFIRMATION)
+      if (process.env.SEND_USER_CONFIRMATION === 'true') {
+        sendApplicationConfirmation(emailData).then(result => {
+          if (result.success) {
+            logger.info(`Confirmation email sent to ${email}`);
+          } else {
+            logger.error(`Failed to send confirmation email to ${email}:`, result.error);
+          }
+        }).catch(error => {
+          logger.error(`Error sending confirmation email to ${email}:`, error);
+        });
+      }
 
       // Send notification email to admin (don't wait for it)
       sendAdminNotification(emailData).then(result => {
