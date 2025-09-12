@@ -214,15 +214,13 @@ export const sendEmail = async (to, subject, html, text) => {
       ? 'onboarding@resend.dev'  // Always use verified domain in development
       : (process.env.FROM_EMAIL || 'onboarding@resend.dev');  // Use configured email in production
     
-    // If RESEND_FORCE_TO is set (e.g., testing without verified domain), route all emails there.
-    const forcedRecipient = process.env.RESEND_FORCE_TO && process.env.RESEND_FORCE_TO.trim();
-    let actualRecipient = forcedRecipient || to;
-    if (forcedRecipient && forcedRecipient !== to) {
-      // Modify content to indicate original recipient
-      try {
-        html = html.replace(/Hello [^,]+/, (match) => `${match} (Original: ${to})`);
-        text = text.replace(/Hello [^,]+/, (match) => `${match} (Original: ${to})`);
-      } catch {}
+    // In development, redirect unverified emails to verified email
+    let actualRecipient = to;
+    if (process.env.NODE_ENV === 'development' && to !== 'zakharovmaksym00@gmail.com') {
+      actualRecipient = 'zakharovmaksym00@gmail.com';
+      // Modify content to show original recipient
+      html = html.replace(/Hello [^,]+/, `Hello ${to.split('@')[0]} (Original: ${to})`);
+      text = text.replace(/Hello [^,]+/, `Hello ${to.split('@')[0]} (Original: ${to})`);
     }
     
     const { data, error } = await resendClient.emails.send({
@@ -248,7 +246,7 @@ export const sendEmail = async (to, subject, html, text) => {
       return { success: false, error: error.message };
     }
 
-    logger.info(`Email sent successfully to ${actualRecipient}:`, data);
+    logger.info(`Email sent successfully to ${actualRecipient}${actualRecipient !== to ? ` (redirected from ${to})` : ''}:`, data);
     return { success: true, data };
   } catch (error) {
     logger.error('Email sending error:', error);

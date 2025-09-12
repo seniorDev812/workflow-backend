@@ -15,13 +15,13 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: ADMIN_EMAIL
-        value: zakharovmaksym00@gmail.com
+        sync: false
       - key: COMPANY_NAME
         sync: false
       - key: CONTACT_EMAIL
         sync: false
       - key: FROM_EMAIL
-        value: onboarding@resend.dev
+        sync: false
       - key: TEST_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
@@ -30,8 +30,6 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
-      - key: RESEND_FORCE_TO
-        value: zakharovmaksym00@gmail.com
       - key: S3_REGION
         sync: false
       - key: S3_ENDPOINT
