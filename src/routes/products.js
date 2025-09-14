@@ -7,10 +7,8 @@ import { logger } from '../utils/logger.js';
 
 const router = express.Router();
 
-// Public routes - Get all active products
+// Public routes - Get all active products (no pagination)
 router.get('/', [
-  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
-  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
   query('search').optional().isString().withMessage('Search must be a string'),
   query('categoryId').optional().isString().withMessage('Category ID must be a string'),
 ], asyncHandler(async (req, res) => {
@@ -23,8 +21,7 @@ router.get('/', [
     });
   }
 
-  const { page = 1, limit = 5, search, categoryId } = req.query;
-  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const { search, categoryId } = req.query;
 
   try {
     // Build where clause
@@ -41,32 +38,27 @@ router.get('/', [
       ...(categoryId && { categoryId })
     };
 
-    // Get products with pagination
-    const [productsRaw, total] = await Promise.all([
-      prisma.products.findMany({
-        where,
-        include: {
-          categories: {
-            select: {
-              id: true,
-              name: true,
-              slug: true
-            }
-          },
-          subcategories: {
-            select: {
-              id: true,
-              name: true,
-              slug: true
-            }
+    // Get all products without pagination
+    const productsRaw = await prisma.products.findMany({
+      where,
+      include: {
+        categories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
           }
         },
-        skip,
-        take: parseInt(limit),
-        orderBy: { createdAt: 'desc' }
-      }),
-      prisma.products.count({ where })
-    ]);
+        subcategories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     // Transform products to match frontend expectations
     const products = productsRaw.map(product => ({
@@ -77,19 +69,9 @@ router.get('/', [
       subcategories: undefined
     }));
 
-    const totalPages = Math.ceil(total / parseInt(limit));
-
     res.status(200).json({
       success: true,
-      data: products,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        totalPages,
-        hasNext: parseInt(page) < totalPages,
-        hasPrev: parseInt(page) > 1
-      }
+      data: products
     });
   } catch (error) {
     logger.error('Products fetch error:', error);

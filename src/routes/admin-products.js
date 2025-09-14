@@ -11,13 +11,11 @@ const router = express.Router();
 router.use(protect); 
 router.use(authorize('ADMIN'));
 
-// Get products with advanced filtering and pagination
+// Get products with advanced filtering (no pagination)
 router.get('/', [
   query('categoryId').optional().isString().withMessage('Category ID must be a string'),
   query('subcategoryId').optional().isString().withMessage('Subcategory ID must be a string'),
   query('search').optional().isString().withMessage('Search must be a string'),
-  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
-  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
   query('status').optional().isIn(['active', 'archived', 'all']).withMessage('Status must be active, archived, or all'),
   query('priceMin').optional().isFloat({ min: 0 }).withMessage('Minimum price must be a positive number'),
   query('priceMax').optional().isFloat({ min: 0 }).withMessage('Maximum price must be a positive number'),
@@ -37,8 +35,6 @@ router.get('/', [
     categoryId, 
     subcategoryId,
     search, 
-    page = 1, 
-    limit = 20, 
     status = 'active',
     priceMin,
     priceMax,
@@ -47,7 +43,6 @@ router.get('/', [
   } = req.query;
 
   try {
-    const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Build where clause
     const where = {};
@@ -87,32 +82,27 @@ router.get('/', [
       if (priceMax) where.price.lte = parseFloat(priceMax);
     }
 
-    // Get products with pagination
-    const [productsRaw, total] = await Promise.all([
-      prisma.products.findMany({
-        where,
-        include: {
-          categories: {
-            select: {
-              id: true,
-              name: true,
-              slug: true
-            }
-          },
-          subcategories: {
-            select: {
-              id: true,
-              name: true,
-              slug: true
-            }
+    // Get all products without pagination
+    const productsRaw = await prisma.products.findMany({
+      where,
+      include: {
+        categories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
           }
         },
-        skip,
-        take: parseInt(limit),
-        orderBy: { [sortBy]: sortOrder }
-      }),
-      prisma.products.count({ where })
-    ]);
+        subcategories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        }
+      },
+      orderBy: { [sortBy]: sortOrder }
+    });
 
     const products = productsRaw.map(p => ({
       ...p,
@@ -121,17 +111,10 @@ router.get('/', [
       categories: undefined,
       subcategories: undefined
     }));
-    const totalPages = Math.ceil(total / parseInt(limit));
 
     res.status(200).json({
       success: true,
-      data: products,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        totalPages
-      }
+      data: products
     });
   } catch (error) {
     logger.error('Products fetch error:', error);
