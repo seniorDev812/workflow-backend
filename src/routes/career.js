@@ -35,10 +35,8 @@ const invalidateJobCache = () => {
   logger.info(`Job cache invalidated. Cleared ${beforeSize - afterSize} job-related entries.`);
 };
 
-// Public routes - Get all active jobs with caching
+// Public routes - Get all active jobs with caching (no pagination)
 router.get('/jobs', [
-  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
-  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
   query('search').optional().isString().withMessage('Search must be a string'),
   query('type').optional().isString().withMessage('Job type must be a string'),
   query('location').optional().isString().withMessage('Location must be a string'),
@@ -52,11 +50,10 @@ router.get('/jobs', [
     });
   }
 
-  const { page = 1, limit = 10, search, type, location } = req.query;
-  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const { search, type, location } = req.query;
 
-  // Generate cache key
-  const cacheKey = `jobs-${page}-${limit}-${search || ''}-${type || ''}-${location || ''}`;
+  // Generate cache key (without pagination)
+  const cacheKey = `jobs-${search || ''}-${type || ''}-${location || ''}`;
   
   // Check cache first
   const cached = jobCache.get(cacheKey);
@@ -80,25 +77,18 @@ router.get('/jobs', [
       ...(location && { location: { contains: location, mode: 'insensitive' } })
     };
 
-    // Get jobs with pagination
-    const [jobs, total] = await Promise.all([
-      prisma.jobs.findMany({
-        where,
-        include: {
-          _count: {
-            select: {
-              career_applications: true
-            }
+    // Get all jobs without pagination
+    const jobs = await prisma.jobs.findMany({
+      where,
+      include: {
+        _count: {
+          select: {
+            career_applications: true
           }
-        },
-        skip,
-        take: parseInt(limit),
-        orderBy: { createdAt: 'desc' }
-      }),
-      prisma.jobs.count({ where })
-    ]);
-
-    const totalPages = Math.ceil(total / parseInt(limit));
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     // Parse JSON strings back to arrays for response
     const transformedJobs = jobs.map(job => ({
@@ -109,15 +99,7 @@ router.get('/jobs', [
 
     const response = {
       success: true,
-      data: transformedJobs,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        totalPages,
-        hasNext: parseInt(page) < totalPages,
-        hasPrev: parseInt(page) > 1
-      }
+      data: transformedJobs
     };
 
     // Cache the response

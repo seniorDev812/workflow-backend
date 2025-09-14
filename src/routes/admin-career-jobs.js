@@ -12,10 +12,8 @@ const router = express.Router();
 router.use(protect);
 router.use(authorize('ADMIN'));
 
-// Get all jobs with advanced filtering
+// Get all jobs with advanced filtering (no pagination)
 router.get('/', [
-  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
-  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
   query('search').optional().isString().withMessage('Search must be a string'),
   query('type').optional().isString().withMessage('Job type must be a string'),
   query('department').optional().isString().withMessage('Department must be a string'),
@@ -35,8 +33,6 @@ router.get('/', [
 
   try {
     const { 
-      page = 1, 
-      limit = 20, 
       search, 
       type, 
       department, 
@@ -45,8 +41,6 @@ router.get('/', [
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Build where clause
     const where = {};
@@ -82,25 +76,18 @@ router.get('/', [
       orderBy[sortBy] = sortOrder;
     }
 
-    // Get jobs with pagination
-    const [jobs, total] = await Promise.all([
-      prisma.jobs.findMany({
-        where,
-        include: {
-          _count: {
-            select: {
-              career_applications: true
-            }
+    // Get all jobs without pagination
+    const jobs = await prisma.jobs.findMany({
+      where,
+      include: {
+        _count: {
+          select: {
+            career_applications: true
           }
-        },
-        skip,
-        take: parseInt(limit),
-        orderBy
-      }),
-      prisma.jobs.count({ where })
-    ]);
-
-    const totalPages = Math.ceil(total / parseInt(limit));
+        }
+      },
+      orderBy
+    });
 
     // Parse JSON strings back to arrays for skills and benefits
     const transformedJobs = jobs.map(job => ({
@@ -111,13 +98,7 @@ router.get('/', [
 
     res.status(200).json({
       success: true,
-      data: transformedJobs,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        totalPages
-      }
+      data: transformedJobs
     });
   } catch (error) {
     logger.error('Jobs fetch error:', error);
