@@ -12,7 +12,7 @@ const router = express.Router();
 router.use(protect);
 router.use(authorize('ADMIN'));
 
-// Get all jobs with advanced filtering (no pagination)
+// Get all jobs with advanced filtering and pagination
 router.get('/', [
   query('search').optional().isString().withMessage('Search must be a string'),
   query('type').optional().isString().withMessage('Job type must be a string'),
@@ -21,6 +21,8 @@ router.get('/', [
   query('status').optional().isIn(['active', 'archived', 'all']).withMessage('Status must be active, archived, or all'),
   query('sortBy').optional().isIn(['createdAt', 'title', 'applications', 'postedDate']).withMessage('Invalid sort field'),
   query('sortOrder').optional().isIn(['asc', 'desc']).withMessage('Sort order must be asc or desc'),
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -39,8 +41,13 @@ router.get('/', [
       location, 
       status = 'active',
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      page = 1,
+      limit = 5
     } = req.query;
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Build where clause
     const where = {};
@@ -68,37 +75,72 @@ router.get('/', [
     if (department) where.department = { contains: department, mode: 'insensitive' };
     if (location) where.location = { contains: location, mode: 'insensitive' };
 
-    // Build orderBy
+    // Build orderBy with performance optimizations
     const orderBy = {};
     if (sortBy === 'applications') {
-      orderBy.applications = { _count: sortOrder };
+      // For applications count, we need to use a different approach
+      orderBy.createdAt = 'desc'; // Default fallback
     } else {
       orderBy[sortBy] = sortOrder;
     }
 
-    // Get all jobs without pagination
-    const jobs = await prisma.jobs.findMany({
-      where,
-      include: {
-        _count: {
-          select: {
-            career_applications: true
+    // Get jobs with pagination and total count
+    const [jobs, total] = await Promise.all([
+      prisma.jobs.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          requirements: true,
+          location: true,
+          type: true,
+          department: true,
+          salary: true,
+          responsibilities: true,
+          postedDate: true,
+          skills: true,
+          benefits: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              career_applications: true
+            }
           }
-        }
-      },
-      orderBy
-    });
+        },
+        skip,
+        take: parseInt(limit),
+        orderBy
+      }),
+      prisma.jobs.count({ where })
+    ]);
 
     // Parse JSON strings back to arrays for skills and benefits
     const transformedJobs = jobs.map(job => ({
       ...job,
       skills: job.skills ? JSON.parse(job.skills) : [],
-      benefits: job.benefits ? JSON.parse(job.benefits) : []
+      benefits: job.benefits ? JSON.parse(job.benefits) : [],
+      applicationsCount: job._count.career_applications
     }));
+
+    const totalPages = Math.ceil(total / parseInt(limit));
+
+    // Log performance metrics
+    logger.info(`Admin jobs query: ${transformedJobs.length} jobs returned, page ${page}/${totalPages}, total: ${total}`);
 
     res.status(200).json({
       success: true,
-      data: transformedJobs
+      data: transformedJobs,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages,
+        hasNext: parseInt(page) < totalPages,
+        hasPrev: parseInt(page) > 1
+      }
     });
   } catch (error) {
     logger.error('Jobs fetch error:', error);
