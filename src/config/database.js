@@ -7,7 +7,7 @@ let prisma;
 function initializePrisma() {
   if (!prisma) {
     prisma = new PrismaClient({
-      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+      log: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error'],
       datasources: {
         db: {
           url: process.env.DATABASE_URL,
