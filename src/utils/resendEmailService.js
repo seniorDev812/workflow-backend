@@ -19,8 +19,9 @@ const getResend = () => {
 const getEmailConfig = () => ({
   companyName: process.env.COMPANY_NAME || 'Seen Group',
   contactEmail: process.env.CONTACT_EMAIL || 'info@seengrp.com',
-  adminEmail: process.env.ADMIN_EMAIL || 'zakharovmaksym00@gmail.com',
-  frontendUrl: process.env.FRONTEND_URL || 'https://workflow-seengroup.vercel.app/'
+  adminEmail: process.env.ADMIN_EMAIL || 'info@seengrp.com',
+  frontendUrl: process.env.FRONTEND_URL || 'https://workflow-seengroup.vercel.app/',
+  companyLogo: process.env.COMPANY_LOGO_URL || ''
 });
 
 // Email templates
@@ -34,6 +35,8 @@ const emailTemplates = {
       subject: `Application Confirmation - ${jobTitle}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="display:none;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden">Thank you for applying to ${config.companyName} — we've received your application.</div>
+          ${config.companyLogo ? `<div style=\"text-align:center;margin-bottom:8px\"><img src=\"${config.companyLogo}\" alt=\"${config.companyName}\" style=\"height:36px\"/></div>` : ''}
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
             <h1 style="color: white; margin: 0; font-size: 28px;">Application Received!</h1>
             <p style="color: white; margin: 10px 0 0 0; font-size: 16px;">Thank you for your interest in joining our team</p>
@@ -106,6 +109,8 @@ const emailTemplates = {
       subject: `New Job Application: ${jobTitle} - ${name}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 20px;">
+          <div style="display:none;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden">New application for ${jobTitle} — quick links to download resume and cover letter inside.</div>
+          ${config.companyLogo ? `<div style=\"text-align:center;margin-bottom:8px\"><img src=\"${config.companyLogo}\" alt=\"${config.companyName}\" style=\"height:36px\"/></div>` : ''}
           <div style="background: linear-gradient(135deg, #1f2937, #111827); padding: 24px; border-radius: 14px 14px 0 0; color: #fff;">
             <h1 style="margin: 0; font-size: 22px;">New Job Application</h1>
             <p style="margin: 6px 0 0; opacity: .85;">${jobTitle}</p>
