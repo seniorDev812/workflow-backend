@@ -5,7 +5,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import prisma from '../config/database.js';
 import { logger } from '../utils/logger.js';
 import { sendEmail } from '../utils/resendEmailService.js';
-import { uploadResume, handleResumeUploadError } from '../middleware/resumeUpload.js';
+import { uploadResume, uploadApplicationFiles, handleResumeUploadError } from '../middleware/resumeUpload.js';
 import { sendApplicationConfirmation, sendAdminNotification } from '../utils/resendEmailService.js';
 import { uploadBufferToS3 } from '../utils/storage.js';
 import path from 'path';
@@ -441,7 +441,7 @@ router.post('/resume-submission', uploadResume, handleResumeUploadError, [
 }));
 
 // Submit job application with file upload
-router.post('/applications', uploadResume, handleResumeUploadError, [
+router.post('/applications', uploadApplicationFiles, handleResumeUploadError, [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('phone').optional().isString().withMessage('Phone must be a string'),
@@ -459,7 +459,8 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
   }
 
   const { name, email, phone, position, message, jobId } = req.body;
-  const resumeFile = req.file;
+  const resumeFile = req.files?.resume?.[0];
+  const coverFile = req.files?.coverLetter?.[0];
 
   try {
     // Validate that resume file is uploaded
@@ -534,6 +535,23 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
       targetJobId = generalJob.id;
     }
 
+    // Optionally upload cover letter PDF
+    let coverLetterUrl = null;
+    if (coverFile) {
+      try {
+        const coverUpload = await uploadBufferToS3({
+          buffer: coverFile.buffer,
+          originalName: coverFile.originalname,
+          mimetype: coverFile.mimetype,
+          prefix: 'cover-letters'
+        });
+        coverLetterUrl = coverUpload.url;
+      } catch (err) {
+        logger.error('Cover letter upload error:', err);
+        return res.status(500).json({ success: false, error: 'Failed to upload cover letter file' });
+      }
+    }
+
     // Create application
     const application = await prisma.career_applications.create({
       data: {
@@ -541,7 +559,7 @@ router.post('/applications', uploadResume, handleResumeUploadError, [
         name,
         email,
         phone,
-        coverLetter: message,
+        coverLetter: coverLetterUrl || message || null,
         resumeUrl,
         updatedAt: new Date()
       }

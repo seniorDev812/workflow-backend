@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import { protect, authorize } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
+import { sendEmail } from '../utils/resendEmailService.js';
 import prisma from '../config/database.js';
 import { contactRateLimiter } from '../middleware/rateLimiters.js';
 import { optionalCaptcha } from '../middleware/captcha.js';
@@ -124,6 +125,42 @@ router.post('/', contactRateLimiter, optionalCaptcha, [
       productContext: parsedProductContext,
       submissionId: newSubmission.id
     });
+
+    // Attempt to send a confirmation email to the user (non-blocking)
+    try {
+      const companyName = process.env.COMPANY_NAME || 'Seen Group';
+      const subject = `We received your request at ${companyName}`;
+      const fullName = `${firstName} ${lastName}`.trim();
+      const html = `
+        <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;line-height:1.6">
+          <h2 style="margin:0 0 12px 0;">Thank you, ${fullName || 'there'}!</h2>
+          <p>We’ve received your request and our team will get back to you within 24 hours.</p>
+          <p style="margin:16px 0 4px;">Summary</p>
+          <ul style="color:#555;">
+            <li><strong>Reason:</strong> ${contactReason}</li>
+            ${message ? `<li><strong>Message:</strong> ${message}</li>` : ''}
+            ${Array.isArray(parsedRequirements) && parsedRequirements.length > 0 ? `<li><strong>Items:</strong> ${parsedRequirements.length}</li>` : ''}
+          </ul>
+          <p style="color:#666">If you have additional details to share, just reply to this email.</p>
+          <p style="margin-top:24px;color:#888">— ${companyName} Support</p>
+        </div>
+      `;
+      const text = `Thank you${fullName ? ', ' + fullName : ''}!
+We’ve received your request and will get back to you within 24 hours.
+
+Reason: ${contactReason}
+${message ? `Message: ${message}\n` : ''}${Array.isArray(parsedRequirements) && parsedRequirements.length > 0 ? `Items: ${parsedRequirements.length}\n` : ''}
+— ${companyName} Support`;
+
+      const replyTo = process.env.REPLY_TO_EMAIL || process.env.CONTACT_EMAIL || process.env.ADMIN_EMAIL;
+      sendEmail(email, subject, html, text, { replyTo })
+        .then((r) => {
+          if (!r.success) logger.warn('Contact confirmation email failed:', r.error);
+        })
+        .catch((err) => logger.warn('Contact confirmation email error:', err));
+    } catch (mailErr) {
+      logger.warn('Contact confirmation email skipped due to error:', mailErr);
+    }
 
     res.status(201).json({
       success: true,

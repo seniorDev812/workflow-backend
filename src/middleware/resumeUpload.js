@@ -3,20 +3,26 @@ import multer from 'multer';
 // Configure storage: use memory to forward to S3-compatible storage
 const storage = multer.memoryStorage();
 
-// File filter for resumes
+// File filter for application uploads (resume + optional cover letter PDF)
 const fileFilter = (req, file, cb) => {
-  // Allow only PDF, DOC, and DOCX files
+  if (file.fieldname === 'coverLetter') {
+    // Cover letter must be PDF only
+    if (file.mimetype === 'application/pdf') {
+      return cb(null, true);
+    }
+    return cb(new Error('Cover letter must be a PDF file.'), false);
+  }
+
+  // Resume: allow PDF, DOC, DOCX
   const allowedMimeTypes = [
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ];
-  
   if (allowedMimeTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only PDF, DOC, and DOCX files are allowed for resumes!'), false);
+    return cb(null, true);
   }
+  return cb(new Error('Only PDF, DOC, and DOCX files are allowed for resumes!'), false);
 };
 
 // Configure multer for resumes
@@ -28,8 +34,14 @@ const upload = multer({
   }
 });
 
-// Single resume upload middleware
+// Single resume upload middleware (backward compatibility)
 export const uploadResume = upload.single('resume');
+
+// New: Upload both resume and optional PDF cover letter
+export const uploadApplicationFiles = upload.fields([
+  { name: 'resume', maxCount: 1 },
+  { name: 'coverLetter', maxCount: 1 }
+]);
 
 // Error handling middleware for resume uploads
 export const handleResumeUploadError = (error, req, res, next) => {
@@ -50,6 +62,12 @@ export const handleResumeUploadError = (error, req, res, next) => {
     return res.status(400).json({
       success: false,
       error: 'Only PDF, DOC, and DOCX files are allowed for resumes!'
+    });
+  }
+  if (error.message === 'Cover letter must be a PDF file.') {
+    return res.status(400).json({
+      success: false,
+      error: 'Cover letter must be a PDF file.'
     });
   }
   
