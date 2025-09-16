@@ -105,69 +105,47 @@ const emailTemplates = {
     return {
       subject: `New Job Application: ${jobTitle} - ${name}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: #dc3545; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">New Job Application</h1>
-            <p style="color: white; margin: 10px 0 0 0;">Action Required</p>
+        <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #1f2937, #111827); padding: 24px; border-radius: 14px 14px 0 0; color: #fff;">
+            <h1 style="margin: 0; font-size: 22px;">New Job Application</h1>
+            <p style="margin: 6px 0 0; opacity: .85;">${jobTitle}</p>
           </div>
-          
-          <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #333; margin-top: 0;">Application Details</h2>
-            
-            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 8px 0; font-weight: bold; color: #333; width: 120px;">Name:</td>
-                  <td style="padding: 8px 0; color: #666;">${name}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; font-weight: bold; color: #333;">Email:</td>
-                  <td style="padding: 8px 0; color: #666;"><a href="mailto:${email}" style="color: #667eea;">${email}</a></td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; font-weight: bold; color: #333;">Phone:</td>
-                  <td style="padding: 8px 0; color: #666;">${phone || 'Not provided'}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; font-weight: bold; color: #333;">Position:</td>
-                  <td style="padding: 8px 0; color: #666;">${jobTitle}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; font-weight: bold; color: #333;">Application ID:</td>
-                  <td style="padding: 8px 0; color: #666; font-family: monospace;">${applicationId}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; font-weight: bold; color: #333;">Resume:</td>
-                  <td style="padding: 8px 0; color: #666;">
-                    ${resumeUrl ? `<a href="${resumeUrl}" style="color: #667eea;">Download Resume</a>` : 'No resume uploaded'}
-                  </td>
-                </tr>
-              </table>
+          <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 14px 14px;">
+            <table style="width:100%; border-collapse: collapse; font-size:14px;">
+              <tr>
+                <td style="padding:8px 0; color:#374151; font-weight:600; width:140px;">Applicant</td>
+                <td style="padding:8px 0; color:#4b5563;">${name}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0; color:#374151; font-weight:600;">Email</td>
+                <td style="padding:8px 0; color:#4b5563;"><a href="mailto:${email}" style="color:#2563eb; text-decoration:none;">${email}</a></td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0; color:#374151; font-weight:600;">Phone</td>
+                <td style="padding:8px 0; color:#4b5563;">${phone || 'Not provided'}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0; color:#374151; font-weight:600;">Application ID</td>
+                <td style="padding:8px 0; color:#4b5563; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">${applicationId}</td>
+              </tr>
+            </table>
+
+            <div style="margin:16px 0; height:1px; background:#e5e7eb;"></div>
+
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+              ${resumeUrl ? `<a href="${resumeUrl}" style="background:#059669; color:#fff; padding:10px 14px; border-radius:8px; text-decoration:none; font-weight:600;">Download Resume</a>` : `<span style="background:#F3F4F6; color:#6B7280; padding:10px 14px; border-radius:8px;">No resume uploaded</span>`}
+              ${coverLetter && /^https?:\/\//.test(coverLetter) ? `<a href="${coverLetter}" style="background:#2563eb; color:#fff; padding:10px 14px; border-radius:8px; text-decoration:none; font-weight:600;">Download Cover Letter</a>` : `<span style="background:#F3F4F6; color:#6B7280; padding:10px 14px; border-radius:8px;">No cover letter uploaded</span>`}
             </div>
-            
-            ${coverLetter ? `
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #333; margin-top: 0;">Cover Letter</h3>
-                <p style="color: #666; line-height: 1.6; white-space: pre-wrap;">${coverLetter}</p>
+
+            <div style="margin-top:20px; padding:16px; background:#fff; border:1px solid #e5e7eb; border-radius:10px;">
+              <p style="margin:0; color:#6b7280;">Open the admin panel to review and take action.</p>
+              <div style="margin-top:12px;">
+                <a href="${config.frontendUrl}/admin/career" style="background:#111827; color:#fff; padding:10px 16px; border-radius:8px; text-decoration:none; font-weight:600;">Open Admin Panel</a>
+                <a href="mailto:${email}" style="margin-left:8px; background:#4f46e5; color:#fff; padding:10px 16px; border-radius:8px; text-decoration:none; font-weight:600;">Reply to Applicant</a>
               </div>
-            ` : ''}
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${config.frontendUrl}/admin/career" 
-                 style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-right: 10px;">
-                View in Admin Panel
-              </a>
-              <a href="mailto:${email}" 
-                 style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-                Reply to Applicant
-              </a>
             </div>
-            
-            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 30px 0;">
-            
-            <p style="color: #999; font-size: 14px; text-align: center; margin: 0;">
-              This is an automated notification from your career portal.
-            </p>
+
+            <p style="margin-top:16px; color:#9ca3af; font-size:12px; text-align:center;">This is an automated notification from ${config.companyName} career portal.</p>
           </div>
         </div>
       `,
@@ -181,8 +159,7 @@ const emailTemplates = {
         - Position: ${jobTitle}
         - Application ID: ${applicationId}
         - Resume: ${resumeUrl ? 'Available for download' : 'No resume uploaded'}
-        
-        ${coverLetter ? `Cover Letter:\n${coverLetter}\n` : ''}
+        - Cover Letter: ${coverLetter && /^https?:\/\//.test(coverLetter) ? 'Available for download' : 'No cover letter uploaded'}
         
         View in Admin Panel: ${config.frontendUrl}/admin/career
         Reply to Applicant: ${email}
