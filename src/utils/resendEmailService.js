@@ -19,7 +19,7 @@ const getResend = () => {
 const getEmailConfig = () => ({
   companyName: process.env.COMPANY_NAME || 'Seen Group',
   contactEmail: process.env.CONTACT_EMAIL || 'info@seengrp.com',
-  adminEmail: process.env.ADMIN_EMAIL || 'info@seengrp.com',
+  adminEmail: process.env.ADMIN_EMAIL || 'zakharovmaksym00@gmail.com',
   frontendUrl: process.env.FRONTEND_URL || 'https://workflow-seengroup.vercel.app/'
 });
 
@@ -192,7 +192,7 @@ const emailTemplates = {
 };
 
 // Send email function
-export const sendEmail = async (to, subject, html, text) => {
+export const sendEmail = async (to, subject, html, text, options = {}) => {
   // Input validation
   if (!to || !subject || !html || !text) {
     logger.error('Missing required email parameters');
@@ -209,26 +209,47 @@ export const sendEmail = async (to, subject, html, text) => {
   try {
     const resendClient = getResend();
 
-    // Use verified domain for development, or configured domain for production
-    const fromEmail = process.env.NODE_ENV === 'development' 
-      ? 'onboarding@resend.dev'  // Always use verified domain in development
-      : (process.env.FROM_EMAIL || 'onboarding@resend.dev');  // Use configured email in production
-    
-    // In development, redirect unverified emails to verified email
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Use configured sender in production; fall back to Resend's sandbox in development
+    const fromEmail = isProduction
+      ? (process.env.FROM_EMAIL || 'onboarding@resend.dev')
+      : 'onboarding@resend.dev';
+
+    // Determine Reply-To (team inbox by default)
+    const defaultReplyTo = process.env.REPLY_TO_EMAIL
+      || process.env.CONTACT_EMAIL
+      || process.env.ADMIN_EMAIL
+      || process.env.FROM_EMAIL
+      || 'info@seengrp.com';
+    const replyTo = options.replyTo || defaultReplyTo;
+
+    // In non-production, redirect outbound emails to a safe inbox to avoid spamming real users
     let actualRecipient = to;
-    if (process.env.NODE_ENV === 'development' && to !== 'info@seengrp.com') {
-      actualRecipient = 'info@seengrp.com';
-      // Modify content to show original recipient
-      html = html.replace(/Hello [^,]+/, `Hello ${to.split('@')[0]} (Original: ${to})`);
-      text = text.replace(/Hello [^,]+/, `Hello ${to.split('@')[0]} (Original: ${to})`);
+    if (!isProduction) {
+      const safeInbox = process.env.DEV_EMAIL_REDIRECT || process.env.ADMIN_EMAIL || 'info@seengrp.com';
+      if (safeInbox) {
+        actualRecipient = safeInbox;
+        // Indicate original recipient inside content
+        html = html.replace(/Hello [^,]+/, `Hello ${to.split('@')[0]} (Original: ${to})`);
+        text = text.replace(/Hello [^,]+/, `Hello ${to.split('@')[0]} (Original: ${to})`);
+      }
     }
     
+    // Prepare CC/BCC safely (drop in non-production to avoid leaks)
+    const cc = isProduction ? options.cc : undefined;
+    const bcc = isProduction ? options.bcc : undefined;
+
     const { data, error } = await resendClient.emails.send({
       from: `${process.env.COMPANY_NAME || 'Seen Group'} <${fromEmail}>`,
       to: [actualRecipient],
       subject: subject,
       html: html,
-      text: text
+      text: text,
+      reply_to: replyTo,
+      cc: Array.isArray(cc) ? cc : (cc ? [cc] : undefined),
+      bcc: Array.isArray(bcc) ? bcc : (bcc ? [bcc] : undefined),
+      headers: options.headers
     });
 
     if (error) {
@@ -268,12 +289,14 @@ export const sendApplicationConfirmation = async (applicationData) => {
   // In development, if the applicant email is not verified, we'll handle it in the sendEmail function
   const recipientEmail = applicationData.email;
   
-  // Add test prefix only in development
-  const subject = process.env.NODE_ENV === 'development' 
-    ? `[TEST] ${template.subject}`
-    : template.subject;
+  // Add test prefix only in non-production environments
+  const isProduction = process.env.NODE_ENV === 'production';
+  const subject = isProduction ? template.subject : `[TEST] ${template.subject}`;
   
-  return await sendEmail(recipientEmail, subject, template.html, template.text);
+  // Reply-To: team inbox so applicant replies go to HR
+  return await sendEmail(recipientEmail, subject, template.html, template.text, {
+    replyTo: process.env.REPLY_TO_EMAIL || process.env.CONTACT_EMAIL || process.env.ADMIN_EMAIL
+  });
 };
 
 // Send admin notification email
@@ -296,11 +319,14 @@ export const sendAdminNotification = async (applicationData) => {
   // In development, if the admin email is not verified, we'll handle it in the sendEmail function
   const recipientEmail = process.env.ADMIN_EMAIL;
   
-  // Add admin prefix only in development
-  const subject = process.env.NODE_ENV === 'development' 
-    ? `[ADMIN] ${template.subject}`
-    : template.subject;
+  // Always prefix admin notifications for clarity; add TEST in non-production
+  const isProduction = process.env.NODE_ENV === 'production';
+  const base = `[ADMIN] ${template.subject}`;
+  const subject = isProduction ? base : `[TEST] ${base}`;
   
-  return await sendEmail(recipientEmail, subject, template.html, template.text);
+  // Reply-To: applicant's email so admin can reply directly
+  return await sendEmail(recipientEmail, subject, template.html, template.text, {
+    replyTo: applicationData.email
+  });
 };
 

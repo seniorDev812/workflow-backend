@@ -43,6 +43,7 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
@@ -70,16 +71,16 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    
-    // For development, allow any localhost port
-    if (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost:')) {
+
+    // In non-production, allow any localhost port for convenience
+    if (!isProduction && /^https?:\/\/localhost:\d+$/i.test(origin)) {
       return callback(null, true);
     }
-    
+
     const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
     return callback(new Error(msg), false);
   },
@@ -88,79 +89,82 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Rate limiting - Very lenient for development
+// Rate limiting - strict in production, lenient in development
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 1 * 60 * 1000, // 1 minute
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 5000, // 5000 requests per minute (was 1000)
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '', 10) || 60 * 1000, // 1 minute
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '', 10) || (isProduction ? 1000 : 5000),
   message: {
     error: 'Too many requests from this IP, please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful requests
-  skipFailedRequests: false,    // Count failed requests
+  skipSuccessfulRequests: isProduction ? false : true,
+  skipFailedRequests: false,
   keyGenerator: (req) => {
     // Use IP + user agent for better rate limiting
     return req.ip + '|' + (req.headers['user-agent'] || 'unknown');
   },
   handler: (req, res) => {
-    console.log(`[RATE LIMIT HIT] IP: ${req.ip}, Path: ${req.path}, User-Agent: ${req.headers['user-agent']}`);
+    if (!isProduction) {
+      console.log(`[RATE LIMIT HIT] IP: ${req.ip}, Path: ${req.path}, User-Agent: ${req.headers['user-agent']}`);
+    }
     res.status(429).json({
       error: 'Too many requests from this IP, please try again later.',
       retryAfter: Math.ceil(60 / 1000), // 1 minute in seconds
-      limit: 5000,
+      limit: isProduction ? 1000 : 5000,
       windowMs: 60000
     });
   },
 });
 
-// Speed limiting - Temporarily disabled for debugging
+// Speed limiting - stricter in production
 const speedLimiter = slowDown({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  delayAfter: 10000, // allow 10000 requests per minute before any delay (effectively disabled)
-  delayMs: (used, req) => {
-    return 0; // No delay
-  },
+  windowMs: 60 * 1000, // 1 minute
+  delayAfter: isProduction ? 200 : 10000,
+  delayMs: () => (isProduction ? 250 : 0),
 });
 
-// Debug middleware to log rate limiting info
-app.use((req, res, next) => {
-  const clientIP = req.ip;
-  const userAgent = req.headers['user-agent'] || 'unknown';
-  const rateLimitKey = clientIP + '|' + userAgent;
-  
-  // Log rate limiting info for debugging
-  if (req.path.includes('/api/')) {
-    console.log(`[Rate Limit Debug] ${req.method} ${req.path} - IP: ${clientIP} - Key: ${rateLimitKey}`);
-  }
-  
-  next();
-});
+// Debug middleware to log rate limiting info (disabled in production)
+if (!isProduction) {
+  app.use((req, res, next) => {
+    const clientIP = req.ip;
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const rateLimitKey = clientIP + '|' + userAgent;
+    
+    if (req.path.includes('/api/')) {
+      console.log(`[Rate Limit Debug] ${req.method} ${req.path} - IP: ${clientIP} - Key: ${rateLimitKey}`);
+    }
+    
+    next();
+  });
+}
 
 // Apply rate limiting to all routes
 app.use(limiter);
 app.use(speedLimiter);
 
-// Very lenient rate limiting for admin routes
+// Admin routes rate limiting
 const adminLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 10000, // 10000 requests per minute for admin routes (was 2000)
+  windowMs: 60 * 1000, // 1 minute
+  max: isProduction ? 300 : 10000,
   message: {
     error: 'Too many admin requests, please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true,
+  skipSuccessfulRequests: isProduction ? false : true,
   keyGenerator: (req) => {
     // Use IP + user agent for better rate limiting
     return req.ip + '|' + (req.headers['user-agent'] || 'unknown');
   },
   handler: (req, res) => {
-    console.log(`[ADMIN RATE LIMIT HIT] IP: ${req.ip}, Path: ${req.path}, User-Agent: ${req.headers['user-agent']}`);
+    if (!isProduction) {
+      console.log(`[ADMIN RATE LIMIT HIT] IP: ${req.ip}, Path: ${req.path}, User-Agent: ${req.headers['user-agent']}`);
+    }
     res.status(429).json({
       error: 'Too many admin requests, please try again later.',
       retryAfter: Math.ceil(60 / 1000), // 1 minute in seconds
-      limit: 10000,
+      limit: isProduction ? 300 : 10000,
       windowMs: 60000
     });
   },

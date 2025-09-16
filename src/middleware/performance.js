@@ -15,7 +15,7 @@ export const performanceMonitor = (req, res, next) => {
     }
     
     // Log all requests in development
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === 'production') {
       logger.info(`${method} ${originalUrl} - ${duration}ms`);
     }
   });
@@ -58,7 +58,7 @@ export const memoryMonitor = (req, res, next) => {
   }
   
   // Add memory info to response headers in development
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'production') {
     res.set('X-Memory-Usage', `${memUsageMB.heapUsed}MB`);
   }
   
