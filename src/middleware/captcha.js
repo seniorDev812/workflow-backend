@@ -38,14 +38,19 @@ const verifyWithTurnstile = async (token, remoteip) => {
 
 export const optionalCaptcha = async (req, res, next) => {
   try {
+    console.log('CAPTCHA Middleware - Provider:', provider, 'Secret exists:', !!secret);
+    
     // No CAPTCHA configured → skip
     if (!provider || !secret) {
+      console.log('CAPTCHA not configured, skipping verification');
       return next();
     }
 
     // Token may arrive in body.captchaToken or body['g-recaptcha-response']
     const token = req.body?.captchaToken || req.body?.['g-recaptcha-response'];
+    console.log('CAPTCHA token received:', token ? 'YES' : 'NO');
     if (!token) {
+      console.log('No CAPTCHA token provided');
       return res.status(400).json({ success: false, error: 'Captcha token is required.' });
     }
 
