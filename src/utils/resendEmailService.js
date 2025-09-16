@@ -21,7 +21,7 @@ const getEmailConfig = () => ({
   contactEmail: process.env.CONTACT_EMAIL || 'info@seengrp.com',
   adminEmail: process.env.ADMIN_EMAIL || 'info@seengrp.com',
   frontendUrl: process.env.FRONTEND_URL || 'https://workflow-seengroup.vercel.app/',
-  companyLogo: process.env.COMPANY_LOGO_URL || ''
+  companyLogo: 'https://pub-8b25a422bd234ffab965d339ba7bc4aa.r2.dev/site-logo.png'
 });
 
 // Email templates
