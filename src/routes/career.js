@@ -4,6 +4,7 @@ import { protect, authorize } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import prisma from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import { sendEmail } from '../utils/resendEmailService.js';
 import { uploadResume, handleResumeUploadError } from '../middleware/resumeUpload.js';
 import { sendApplicationConfirmation, sendAdminNotification } from '../utils/resendEmailService.js';
 import { uploadBufferToS3 } from '../utils/storage.js';
@@ -884,6 +885,57 @@ router.get('/applications/:id', asyncHandler(async (req, res) => {
       success: false,
       error: 'Failed to fetch application'
     });
+  }
+}));
+
+// Send email to an applicant (Admin only)
+router.post('/applications/:id/email', protect, authorize('ADMIN'), asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { subject, message, replyTo, cc, bcc } = req.body || {};
+
+  if (!subject || !message) {
+    return res.status(400).json({ success: false, error: 'Subject and message are required' });
+  }
+
+  try {
+    const application = await prisma.career_applications.findUnique({
+      where: { id },
+      select: { name: true, email: true, jobs: { select: { title: true } } }
+    });
+
+    if (!application || !application.email) {
+      return res.status(404).json({ success: false, error: 'Application or email not found' });
+    }
+
+    const jobTitle = application.jobs?.title || 'your application';
+    const name = application.name || 'Applicant';
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+        <p>Hi ${name},</p>
+        <p>${String(message).replace(/\n/g, '<br>')}</p>
+        <p style=\"color:#666\">Regarding: <strong>${jobTitle}</strong></p>
+      </div>
+    `;
+    const text = `Hi ${name},\n\n${message}\n\nRegarding: ${jobTitle}`;
+
+    const result = await sendEmail(
+      application.email,
+      subject,
+      html,
+      text,
+      { replyTo, cc, bcc }
+    );
+
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.error || 'Failed to send email' });
+    }
+
+    logger.info(`Applicant email sent for application ${id} to ${application.email}`);
+    res.status(200).json({ success: true, message: 'Email sent successfully' });
+  } catch (error) {
+    logger.error('Send applicant email error:', error);
+    res.status(500).json({ success: false, error: 'Failed to send email' });
   }
 }));
 
