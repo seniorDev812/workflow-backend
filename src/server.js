@@ -124,8 +124,8 @@ const speedLimiter = slowDown({
   delayMs: () => (isProduction ? 250 : 0),
 });
 
-// Debug middleware to log rate limiting info (disabled in production)
-if (!isProduction) {
+// Debug middleware to log rate limiting info (opt-in via RATE_LIMIT_DEBUG)
+if (!isProduction && process.env.RATE_LIMIT_DEBUG === 'true') {
   app.use((req, res, next) => {
     const clientIP = req.ip;
     const userAgent = req.headers['user-agent'] || 'unknown';
