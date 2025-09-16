@@ -707,6 +707,35 @@ router.get('/applications/:id/resume', asyncHandler(async (req, res) => {
   }
 }));
 
+// Download cover letter file (Redirect to R2 URL)
+router.get('/applications/:id/cover-letter', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    logger.info(`Cover letter download requested for application: ${id}`);
+    const application = await prisma.career_applications.findUnique({
+      where: { id },
+      select: { coverLetter: true, name: true }
+    });
+
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'Application not found' });
+    }
+
+    const coverUrl = application.coverLetter;
+    if (!coverUrl || !coverUrl.startsWith('http')) {
+      return res.status(404).json({ success: false, error: 'No cover letter file found for this application' });
+    }
+
+    // If cover letter URL is S3/R2, redirect to it
+    logger.info(`Redirecting to cover letter URL: ${coverUrl}`);
+    return res.redirect(coverUrl);
+  } catch (error) {
+    logger.error('Cover letter download error:', error);
+    res.status(500).json({ success: false, error: 'Failed to download cover letter' });
+  }
+}));
+
 // @desc    Bulk operations on applications
 // @route   PATCH /api/career/applications/bulk
 // @access  Private (Admin only)
