@@ -18,6 +18,7 @@ import contactRoutes from './routes/contact.js';
 import careerRoutes from './routes/career.js';
 import publicRoutes from './routes/public.js';
 import analyticsRoutes from './routes/analytics.js';
+import twoFactorRoutes from './routes/twoFactor.js';
 
 // Import admin-specific routes
 import adminCategoriesRoutes from './routes/admin-categories.js';
@@ -25,6 +26,7 @@ import adminSubcategoriesRoutes from './routes/admin-subcategories.js';
 import adminProductsRoutes from './routes/admin-products.js';
 import adminCareerJobsRoutes from './routes/admin-career-jobs.js';
 import adminSettingsRoutes from './routes/admin-settings.js';
+import adminUsersRoutes from './routes/admin-users.js';
 import uploadRoutes from './routes/upload.js';
 
 // Import middleware
@@ -60,33 +62,70 @@ app.use(helmet({
   },
 }));
 
-// CORS configuration
+// CORS configuration - Enhanced security
 const allowedOrigins = [
   'http://localhost:3000',
   'https://workflow-seengroup.vercel.app',
-  process.env.CORS_ORIGIN
+  process.env.CORS_ORIGIN,
+  process.env.FRONTEND_URL
 ].filter(Boolean); // Remove undefined values 
+
+// Additional security: Check for valid origins
+const isValidOrigin = (origin) => {
+  if (!origin) return false;
+  
+  // Check against allowed origins
+  if (allowedOrigins.includes(origin)) return true;
+  
+  // In development, allow localhost with any port
+  if (!isProduction && /^https?:\/\/localhost:\d+$/i.test(origin)) return true;
+  
+  // In development, allow 127.0.0.1 with any port
+  if (!isProduction && /^https?:\/\/127\.0\.0\.1:\d+$/i.test(origin)) return true;
+  
+  return false;
+};
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin (like mobile apps, Postman, or server-to-server)
+    if (!origin) {
+      // Only allow no-origin requests in development or for specific endpoints
+      if (!isProduction || req?.path?.includes('/health') || req?.path?.includes('/api/public')) {
+        return callback(null, true);
+      }
+      return callback(new Error('Origin required in production'), false);
+    }
 
-    if (allowedOrigins.includes(origin)) {
+    if (isValidOrigin(origin)) {
       return callback(null, true);
     }
 
-    // In non-production, allow any localhost port for convenience
-    if (!isProduction && /^https?:\/\/localhost:\d+$/i.test(origin)) {
-      return callback(null, true);
-    }
+    // Log blocked origins for security monitoring
+    logger.warn(`CORS blocked origin: ${origin}`, {
+      ip: req?.ip,
+      userAgent: req?.get('User-Agent'),
+      path: req?.path
+    });
 
     const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
     return callback(new Error(msg), false);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['X-Total-Count', 'X-Rate-Limit-Remaining'],
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 // Rate limiting - strict in production, lenient in development
@@ -216,6 +255,7 @@ app.use('/api/admin/subcategories', adminLimiter, adminSubcategoriesRoutes);
 app.use('/api/admin/products', adminLimiter, adminProductsRoutes);
 app.use('/api/admin/career/jobs', adminLimiter, adminCareerJobsRoutes);
 app.use('/api/admin/settings', adminLimiter, adminSettingsRoutes);
+app.use('/api/admin/users', adminLimiter, adminUsersRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', adminLimiter, adminRoutes);
 app.use('/api/products', productRoutes);
@@ -224,6 +264,7 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/career', careerRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/2fa', twoFactorRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
