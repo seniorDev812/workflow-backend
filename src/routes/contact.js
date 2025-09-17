@@ -6,6 +6,7 @@ import { logger } from '../utils/logger.js';
 import { sendEmail } from '../utils/resendEmailService.js';
 import prisma from '../config/database.js';
 import { contactRateLimiter } from '../middleware/rateLimiters.js';
+// Use global fetch (Node 18+)
 
 const router = express.Router();
 
@@ -22,6 +23,7 @@ router.post('/', contactRateLimiter, [
   // Accept either a JSON string or an object/array for requirements and productContext
   body('requirements').optional(),
   body('productContext').optional(),
+  body('captchaToken').optional().isString().withMessage('Invalid captcha token'),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -42,8 +44,37 @@ router.post('/', contactRateLimiter, [
     contactReason,
     message,
     requirements, 
-    productContext 
+    productContext,
+    captchaToken
   } = req.body;
+
+  // Verify Cloudflare Turnstile if enabled
+  const captchaEnabled = (process.env.CAPTCHA_ENABLED || 'true').toLowerCase() === 'true';
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+  if (captchaEnabled) {
+    if (!captchaToken) {
+      return res.status(400).json({ success: false, error: 'Captcha verification required' });
+    }
+    if (!turnstileSecret) {
+      logger.warn('CAPTCHA_ENABLED is true but TURNSTILE_SECRET_KEY is not set');
+      return res.status(500).json({ success: false, error: 'Captcha verification misconfigured' });
+    }
+    try {
+      const verifyResp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `secret=${encodeURIComponent(turnstileSecret)}&response=${encodeURIComponent(captchaToken)}`
+      });
+      const verifyJson = await verifyResp.json();
+      if (!verifyJson.success) {
+        logger.warn('Turnstile verification failed', { errors: verifyJson["error-codes"], action: verifyJson.action, cdata: verifyJson.cdata });
+        return res.status(400).json({ success: false, error: 'Captcha verification failed' });
+      }
+    } catch (captchaErr) {
+      logger.error('Turnstile verification error:', captchaErr);
+      return res.status(502).json({ success: false, error: 'Captcha verification service unavailable' });
+    }
+  }
   
   try {
     // Parse requirements and product context
