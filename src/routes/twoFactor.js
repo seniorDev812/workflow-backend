@@ -15,7 +15,7 @@ import {
   verifyRecoveryCode,
   getTimeRemaining,
   validate2FASetup
-} from '../utils/twoFactor.js';
+} from '../utils/twoFactor-fallback.js';
 import rateLimit from 'express-rate-limit';
 
 const router = express.Router();

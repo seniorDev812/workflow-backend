@@ -7,7 +7,7 @@ import { generateToken, generateRefreshToken, comparePassword, protect, hashPass
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { passwordPolicyValidation, passwordPolicies } from '../middleware/passwordPolicy.js';
-import { sanitizeEmail, sanitizeText } from '../utils/sanitizer.js';
+import { sanitizeEmail, sanitizeText } from '../utils/sanitizer-fallback.js';
 
 const router = express.Router();
 

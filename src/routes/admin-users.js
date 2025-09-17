@@ -5,7 +5,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import prisma from '../config/database.js';
 import { passwordPolicyValidation, passwordPolicies, generatePasswordSuggestions } from '../middleware/passwordPolicy.js';
-import { sanitizeEmail, sanitizeText, sanitizeUserData } from '../utils/sanitizer.js';
+import { sanitizeEmail, sanitizeText, sanitizeUserData } from '../utils/sanitizer-fallback.js';
 import { hashPassword } from '../middleware/auth.js';
 import rateLimit from 'express-rate-limit';
 
