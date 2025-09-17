@@ -6,7 +6,7 @@ import { logger } from '../utils/logger.js';
 import { sendEmail } from '../utils/resendEmailService.js';
 import prisma from '../config/database.js';
 import { contactRateLimiter } from '../middleware/rateLimiters.js';
-import { sanitizeContactForm } from '../utils/sanitizer.js';
+import { sanitizeContactForm } from '../utils/sanitizer-fallback.js';
 
 const router = express.Router();
 

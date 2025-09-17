@@ -1,4 +1,4 @@
-import { validatePasswordStrength } from '../utils/sanitizer.js';
+import { validatePasswordStrength } from '../utils/sanitizer-fallback.js';
 import { logger } from '../utils/logger.js';
 
 /**
