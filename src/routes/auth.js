@@ -6,6 +6,8 @@ import prisma from '../config/database.js';
 import { generateToken, generateRefreshToken, comparePassword, protect, hashPassword } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
+import { passwordPolicyValidation, passwordPolicies } from '../middleware/passwordPolicy.js';
+import { sanitizeEmail, sanitizeText } from '../utils/sanitizer.js';
 
 const router = express.Router();
 
