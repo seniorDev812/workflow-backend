@@ -6,7 +6,6 @@ import { logger } from '../utils/logger.js';
 import { sendEmail } from '../utils/resendEmailService.js';
 import prisma from '../config/database.js';
 import { contactRateLimiter } from '../middleware/rateLimiters.js';
-import { sanitizeContactForm } from '../utils/sanitizer-fallback.js';
 
 const router = express.Router();
 
@@ -33,23 +32,6 @@ router.post('/', contactRateLimiter, [
     });
   }
 
-  // Sanitize and validate all input data
-  let sanitizedData;
-  try {
-    sanitizedData = sanitizeContactForm(req.body);
-  } catch (sanitizationError) {
-    logger.warn('Contact form sanitization failed:', {
-      error: sanitizationError.message,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
-    
-    return res.status(400).json({
-      success: false,
-      error: sanitizationError.message
-    });
-  }
-
   const { 
     firstName, 
     lastName, 
@@ -61,12 +43,61 @@ router.post('/', contactRateLimiter, [
     message,
     requirements, 
     productContext 
-  } = sanitizedData;
+  } = req.body;
   
   try {
-    // Requirements and product context are already sanitized and validated
-    const parsedRequirements = requirements || [];
-    const parsedProductContext = productContext || null;
+    // Parse requirements and product context
+    let parsedRequirements = [];
+    let parsedProductContext = null;
+
+    // Only parse requirements if contact reason is sales
+    if (contactReason === 'sales' && requirements) {
+      try {
+        if (typeof requirements === 'string') {
+          parsedRequirements = JSON.parse(requirements);
+        } else if (Array.isArray(requirements)) {
+          parsedRequirements = requirements;
+        } else if (typeof requirements === 'object') {
+          // single object -> wrap as array
+          parsedRequirements = [requirements];
+        }
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid requirements format'
+        });
+      }
+
+      // Validate requirements structure for sales
+      if (!Array.isArray(parsedRequirements) || parsedRequirements.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'At least one product requirement is required for sales inquiries'
+        });
+      }
+
+      // Validate each product requirement
+      const allowedLeadTimes = new Set(['immediate', '1-2 weeks', '2-4 weeks', '1-2 months', '2+ months']);
+      for (const item of parsedRequirements) {
+        const productName = typeof item?.productName === 'string' ? item.productName.trim() : '';
+        const quantityNum = Number.isInteger(item?.quantity) ? item.quantity : parseInt(item?.quantity, 10);
+        const leadTime = typeof item?.leadTime === 'string' ? item.leadTime.trim() : '';
+        const partNumber = typeof item?.partNumber === 'string' ? item.partNumber.trim() : '';
+
+        if (!productName) {
+          return res.status(400).json({ success: false, error: 'Each product requires a productName' });
+        }
+        if (!Number.isFinite(quantityNum) || quantityNum < 1) {
+          return res.status(400).json({ success: false, error: 'Each product requires a valid quantity (>= 1)' });
+        }
+        if (!leadTime || !allowedLeadTimes.has(leadTime)) {
+          return res.status(400).json({ success: false, error: 'Each product requires a valid lead time selection' });
+        }
+        if (productName.length > 200 || partNumber.length > 100) {
+          return res.status(400).json({ success: false, error: 'Product fields exceed maximum length' });
+        }
+      }
+    }
 
     // Validate message for non-sales contacts
     if (contactReason !== 'sales' && (!message || message.trim().length === 0)) {
