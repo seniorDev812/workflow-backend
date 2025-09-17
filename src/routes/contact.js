@@ -55,20 +55,27 @@ router.post('/', contactRateLimiter, [
     if (!captchaToken) {
       return res.status(400).json({ success: false, error: 'Captcha verification required' });
     }
+    // In non-production, if secret missing, skip verification to avoid blocking dev
     if (!turnstileSecret) {
-      logger.warn('CAPTCHA_ENABLED is true but TURNSTILE_SECRET_KEY is not set');
-      return res.status(500).json({ success: false, error: 'Captcha verification misconfigured' });
+      if (process.env.NODE_ENV !== 'production') {
+        logger.warn('Turnstile secret missing in non-production; skipping captcha verification');
+      } else {
+        logger.warn('CAPTCHA_ENABLED is true but TURNSTILE_SECRET_KEY is not set');
+        return res.status(500).json({ success: false, error: 'Captcha verification misconfigured' });
+      }
     }
     try {
-      const verifyResp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      if (turnstileSecret) {
+        const verifyResp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `secret=${encodeURIComponent(turnstileSecret)}&response=${encodeURIComponent(captchaToken)}`
-      });
-      const verifyJson = await verifyResp.json();
-      if (!verifyJson.success) {
-        logger.warn('Turnstile verification failed', { errors: verifyJson["error-codes"], action: verifyJson.action, cdata: verifyJson.cdata });
-        return res.status(400).json({ success: false, error: 'Captcha verification failed' });
+        });
+        const verifyJson = await verifyResp.json();
+        if (!verifyJson.success) {
+          logger.warn('Turnstile verification failed', { errors: verifyJson["error-codes"], action: verifyJson.action, cdata: verifyJson.cdata });
+          return res.status(400).json({ success: false, error: 'Captcha verification failed' });
+        }
       }
     } catch (captchaErr) {
       logger.error('Turnstile verification error:', captchaErr);
