@@ -54,7 +54,12 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
+      // Allow Cloudflare Turnstile script
+      scriptSrc: ["'self'", 'https://challenges.cloudflare.com'],
+      // Allow Turnstile iframe/frame resources
+      frameSrc: ["'self'", 'https://challenges.cloudflare.com'],
+      // API calls to Turnstile verification endpoint (server-side) and general https
+      connectSrc: ["'self'", 'https://challenges.cloudflare.com', 'https:'],
       imgSrc: ["'self'", "data:", "https:"],
     },
   },
