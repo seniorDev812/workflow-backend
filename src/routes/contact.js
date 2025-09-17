@@ -51,7 +51,7 @@ router.post('/', contactRateLimiter, [
   // Verify Cloudflare Turnstile if enabled
   const captchaEnabled = (process.env.CAPTCHA_ENABLED || 'true').toLowerCase() === 'true';
   const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
-  if (captchaEnabled) {
+  if (captchaEnabled && (process.env.SKIP_CAPTCHA || 'false').toLowerCase() !== 'true') {
     if (!captchaToken) {
       return res.status(400).json({ success: false, error: 'Captcha verification required' });
     }
