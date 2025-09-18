@@ -45,6 +45,7 @@ router.get('/', asyncHandler(async (req, res) => {
 // Create category
 router.post('/', [
   body('name').trim().notEmpty().withMessage('Category name is required'),
+  body('description').optional().isString().withMessage('Description must be a string'),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -55,9 +56,11 @@ router.post('/', [
     });
   }
 
-  const { name } = req.body;
+  const { name, description } = req.body;
 
   try {
+    console.log('Creating category with data:', { name, description, user: req.user?.email });
+    
     // Generate slug from name
     const slug = name.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -74,6 +77,7 @@ router.post('/', [
     });
 
     if (existingCategory) {
+      console.log('Category already exists:', existingCategory.name);
       return res.status(400).json({
         success: false,
         error: 'Category with this name already exists'
@@ -83,11 +87,13 @@ router.post('/', [
     const category = await prisma.categories.create({
       data: {
         name,
+        description: description || null,
         slug,
         updatedAt: new Date()
       }
     });
 
+    console.log('Category created successfully:', category.id);
     logger.info(`Category created: ${category.name} by admin: ${req.user.email}`);
 
     res.status(201).json({
@@ -96,10 +102,12 @@ router.post('/', [
       message: 'Category created successfully'
     });
   } catch (error) {
+    console.error('Category creation error details:', error);
     logger.error('Category creation error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to create category'
+      error: 'Failed to create category',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }));
@@ -108,6 +116,7 @@ router.post('/', [
 router.patch('/', [
   body('id').isString().withMessage('Category ID is required'),
   body('name').trim().notEmpty().withMessage('Category name is required'),
+  body('description').optional().isString().withMessage('Description must be a string'),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -118,7 +127,7 @@ router.patch('/', [
     });
   }
 
-  const { id, name } = req.body;
+  const { id, name, description } = req.body;
 
   try {
     // Check if category exists
@@ -160,6 +169,7 @@ router.patch('/', [
       where: { id },
       data: {
         name,
+        description: description !== undefined ? description : undefined,
         slug,
         updatedAt: new Date()
       }
