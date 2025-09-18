@@ -69,6 +69,8 @@ app.use(helmet({
 const allowedOrigins = [
   'http://localhost:3000',
   'https://workflow-seengroup.vercel.app',
+  'https://www.seengrp.com',
+  'https://seengrp.com',
   process.env.CORS_ORIGIN
 ].filter(Boolean); // Remove undefined values 
 
