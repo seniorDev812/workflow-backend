@@ -111,6 +111,13 @@ router.get('/filter', async (req, res) => {
             name: true,
             slug: true
           }
+        },
+        subcategories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
         }
       }
     };
@@ -138,6 +145,27 @@ router.get('/filter', async (req, res) => {
       whereClause.categoryId = category;
     }
 
+    // Subcategory filter - support single subcategory via `subcategory` and multi via `filter_components`
+    if (filter_components) {
+      const subcategoryIds = filter_components.split(',').filter(Boolean);
+      const actualSubIds = subcategoryIds.filter(id => id !== 'Show All');
+      if (actualSubIds.length > 0) {
+        whereClause.subcategoryId = { in: actualSubIds };
+      }
+    } else if (subcategory) {
+      whereClause.subcategoryId = subcategory;
+    }
+
+    // Manufacturer filter
+    if (manufacturer) {
+      whereClause.manufacturer = { contains: manufacturer, mode: 'insensitive' };
+    }
+
+    // OEM Number filter
+    if (oemNumber) {
+      whereClause.oemNumber = { contains: oemNumber, mode: 'insensitive' };
+    }
+
     // Get total count
     const total = await prisma.products.count({ where: whereClause });
 
@@ -154,11 +182,11 @@ router.get('/filter', async (req, res) => {
     const transformedProducts = products.map(product => ({
       id: product.id,
       name: product.name,
-      oemNumber: product.oemNumber, // Using name as OEM number
-      manufacturer: product.manufacturer, // Using category as manufacturer
+      oemNumber: product.oemNumber,
+      manufacturer: product.manufacturer,
       description: product.description,
-      category: product.category,
-      subcategory: product.subcategory,
+      category: product.categories?.name || product.category || '',
+      subcategory: product.subcategories?.name || product.subcategory || '',
       image: product.imageUrl,
       price: product.price,
       isActive: product.isActive,
