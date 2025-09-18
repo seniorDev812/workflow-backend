@@ -521,6 +521,56 @@ router.patch('/submissions/:id', protect, authorize('ADMIN'), [
   }
 }));
 
+// Bulk delete contact submissions (MUST come before /submissions/:id route)
+router.delete('/submissions/bulk', protect, authorize('ADMIN'), asyncHandler(async (req, res) => {
+  try {
+    console.log('Bulk delete request received:', { body: req.body, user: req.user?.email });
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      console.log('Invalid IDs provided:', ids);
+      return res.status(400).json({
+        success: false,
+        error: 'Submission IDs array is required'
+      });
+    }
+
+    // Validate that all IDs are valid UUIDs
+    const validIds = ids.filter(id => typeof id === 'string' && id.trim() !== '');
+    if (validIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No valid submission IDs provided'
+      });
+    }
+
+    console.log('Attempting to delete submissions:', validIds);
+
+    // Delete multiple submissions
+    const result = await prisma.contact_submissions.deleteMany({
+      where: { id: { in: validIds } }
+    });
+
+    console.log(`Bulk deleted ${result.count} contact submissions`);
+    logger.info(`Bulk deleted ${result.count} contact submissions by admin: ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully deleted ${result.count} submissions`,
+      deletedCount: result.count
+    });
+
+  } catch (error) {
+    console.error('Bulk deletion error details:', error);
+    logger.error('Bulk deletion error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete submissions',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}));
+
 // Delete contact submission
 router.delete('/submissions/:id', protect, authorize('ADMIN'), asyncHandler(async (req, res) => {
   try {
@@ -537,7 +587,7 @@ router.delete('/submissions/:id', protect, authorize('ADMIN'), asyncHandler(asyn
       });
     }
 
-          await prisma.contact_submissions.delete({
+    await prisma.contact_submissions.delete({
       where: { id }
     });
 
@@ -553,39 +603,6 @@ router.delete('/submissions/:id', protect, authorize('ADMIN'), asyncHandler(asyn
     res.status(500).json({
       success: false,
       error: 'Failed to delete contact submission'
-    });
-  }
-}));
-
-// Bulk delete contact submissions
-router.delete('/submissions/bulk', protect, authorize('ADMIN'), asyncHandler(async (req, res) => {
-  try {
-    const { ids } = req.body;
-
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Submission IDs array is required'
-      });
-    }
-
-    // Delete multiple submissions
-    const result = await prisma.contact_submissions.deleteMany({
-      where: { id: { in: ids } }
-    });
-
-    logger.info(`Bulk deleted ${result.count} contact submissions`);
-
-    res.status(200).json({
-      success: true,
-      message: `Successfully deleted ${result.count} submissions`
-    });
-
-  } catch (error) {
-    logger.error('Bulk deletion error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to delete submissions'
     });
   }
 }));
