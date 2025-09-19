@@ -524,11 +524,9 @@ router.patch('/submissions/:id', protect, authorize('ADMIN'), [
 // Bulk delete contact submissions (MUST come before /submissions/:id route)
 router.delete('/submissions/bulk', protect, authorize('ADMIN'), asyncHandler(async (req, res) => {
   try {
-    console.log('Bulk delete request received:', { body: req.body, user: req.user?.email });
     const { ids } = req.body;
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      console.log('Invalid IDs provided:', ids);
       return res.status(400).json({
         success: false,
         error: 'Submission IDs array is required'
@@ -544,14 +542,12 @@ router.delete('/submissions/bulk', protect, authorize('ADMIN'), asyncHandler(asy
       });
     }
 
-    console.log('Attempting to delete submissions:', validIds);
 
     // Delete multiple submissions
     const result = await prisma.contact_submissions.deleteMany({
       where: { id: { in: validIds } }
     });
 
-    console.log(`Bulk deleted ${result.count} contact submissions`);
     logger.info(`Bulk deleted ${result.count} contact submissions by admin: ${req.user.email}`);
 
     res.status(200).json({

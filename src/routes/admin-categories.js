@@ -14,7 +14,6 @@ router.use(authorize('ADMIN'));
 // Get all categories
 router.get('/', asyncHandler(async (req, res) => {
   try {
-    console.log('GET categories request received');
     const categories = await prisma.categories.findMany({
       where: { isActive: true },
       include: {
@@ -27,8 +26,6 @@ router.get('/', asyncHandler(async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    console.log('Found categories:', categories.length);
-    console.log('Category IDs:', categories.map(c => c.id));
     res.status(200).json({
       success: true,
       data: categories
@@ -59,7 +56,6 @@ router.post('/', [
   const { name, description } = req.body;
 
   try {
-    console.log('Creating category with data:', { name, description, user: req.user?.email });
     
     // Generate slug from name
     const slug = name.toLowerCase()
@@ -77,7 +73,6 @@ router.post('/', [
     });
 
     if (existingCategory) {
-      console.log('Category already exists:', existingCategory.name);
       return res.status(400).json({
         success: false,
         error: 'Category with this name already exists'
@@ -93,7 +88,6 @@ router.post('/', [
       }
     });
 
-    console.log('Category created successfully:', category.id);
     logger.info(`Category created: ${category.name} by admin: ${req.user.email}`);
 
     res.status(201).json({
@@ -196,15 +190,9 @@ router.delete('/', [
   query('id').optional().isString().withMessage('Category ID must be a string'),
   body('id').optional().isString().withMessage('Category ID must be a string'),
 ], asyncHandler(async (req, res) => {
-  console.log('Delete category request:', {
-    query: req.query,
-    params: req.params,
-    body: req.body
-  });
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    console.log('Validation errors:', errors.array());
     return res.status(400).json({
       success: false,
       error: 'Validation failed',
