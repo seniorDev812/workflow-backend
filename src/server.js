@@ -113,7 +113,6 @@ const limiter = rateLimit({
   },
   handler: (req, res) => {
     if (!isProduction) {
-      console.log(`[RATE LIMIT HIT] IP: ${req.ip}, Path: ${req.path}, User-Agent: ${req.headers['user-agent']}`);
     }
     res.status(429).json({
       error: 'Too many requests from this IP, please try again later.',
@@ -139,7 +138,6 @@ if (!isProduction && process.env.RATE_LIMIT_DEBUG === 'true') {
     const rateLimitKey = clientIP + '|' + userAgent;
     
     if (req.path.includes('/api/')) {
-      console.log(`[Rate Limit Debug] ${req.method} ${req.path} - IP: ${clientIP} - Key: ${rateLimitKey}`);
     }
     
     next();
@@ -166,7 +164,6 @@ const adminLimiter = rateLimit({
   },
   handler: (req, res) => {
     if (!isProduction) {
-      console.log(`[ADMIN RATE LIMIT HIT] IP: ${req.ip}, Path: ${req.path}, User-Agent: ${req.headers['user-agent']}`);
     }
     res.status(429).json({
       error: 'Too many admin requests, please try again later.',
