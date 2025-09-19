@@ -44,5 +44,11 @@ services:
         sync: false
       - key: S3_FORCE_PATH_STYLE
         value: "true"
+      - key: CAPTCHA_ENABLED
+        value: "true"
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
+      - key: SKIP_CAPTCHA
+        value: "false"
     healthCheckPath: /health
     autoDeploy: true
