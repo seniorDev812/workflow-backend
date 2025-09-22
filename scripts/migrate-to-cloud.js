@@ -26,7 +26,7 @@ if (envContent.includes('supabase.co') || envContent.includes('neon.tech')) {
   // Database URL appears to be local - update .env file with cloud database URL first
 }
 
-// Check if we can connect to database
+// Check if we can connect to database                
 try {
   execSync('npm run generate', { cwd: join(__dirname, '..'), stdio: 'inherit' });
 } catch (error) {
