@@ -13,7 +13,6 @@
     "generate": "prisma generate",
     "studio": "prisma studio",
     "migrate-to-cloud": "node scripts/migrate-to-cloud.js",
-    "setup-admin": "node scripts/add-admin.js",
     "db:ping": "prisma db pull",
     "build": "prisma generate",
     "postinstall": "prisma generate"
