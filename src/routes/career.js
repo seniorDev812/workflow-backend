@@ -41,6 +41,7 @@ router.get('/jobs', [
   query('search').optional().isString().withMessage('Search must be a string'),
   query('type').optional().isString().withMessage('Job type must be a string'),
   query('location').optional().isString().withMessage('Location must be a string'),
+  query('department').optional().isString().withMessage('Department must be a string'),
 ], asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -51,10 +52,10 @@ router.get('/jobs', [
     });
   }
 
-  const { search, type, location } = req.query;
+  const { search, type, location, department } = req.query;
 
   // Generate cache key (without pagination)
-  const cacheKey = `jobs-${search || ''}-${type || ''}-${location || ''}`;
+  const cacheKey = `jobs-${search || ''}-${type || ''}-${location || ''}-${department || ''}`;
   
   // Check cache first
   const cached = jobCache.get(cacheKey);
@@ -75,7 +76,8 @@ router.get('/jobs', [
         ]
       }),
       ...(type && { type }),
-      ...(location && { location: { contains: location, mode: 'insensitive' } })
+      ...(location && { location: { contains: location, mode: 'insensitive' } }),
+      ...(department && { department: { contains: department, mode: 'insensitive' } })
     };
 
     // Get all jobs without pagination
